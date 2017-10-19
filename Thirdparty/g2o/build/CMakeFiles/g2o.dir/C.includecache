@@ -6,11 +6,11 @@
 
 #IncludeRegexTransform: 
 
-/home/lumino/workspace/ORB_SLAM2-master/Thirdparty/g2o/g2o/stuff/os_specific.c
+/home/lumino/hitlumino/commit_ORB-SLAM2/Thirdparty/g2o/g2o/stuff/os_specific.c
 os_specific.h
-/home/lumino/workspace/ORB_SLAM2-master/Thirdparty/g2o/g2o/stuff/os_specific.h
+/home/lumino/hitlumino/commit_ORB-SLAM2/Thirdparty/g2o/g2o/stuff/os_specific.h
 
-/home/lumino/workspace/ORB_SLAM2-master/Thirdparty/g2o/g2o/stuff/os_specific.h
+/home/lumino/hitlumino/commit_ORB-SLAM2/Thirdparty/g2o/g2o/stuff/os_specific.h
 stdio.h
 -
 stdlib.h

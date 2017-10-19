@@ -49,25 +49,25 @@ ${Pangolin_INCLUDE_DIRS}
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
 add_library(${PROJECT_NAME} SHARED
-src/System.cc
-src/Tracking.cc
-src/LocalMapping.cc
-src/LoopClosing.cc
-src/ORBextractor.cc
-src/ORBmatcher.cc
-src/FrameDrawer.cc
-src/Converter.cc
-src/MapPoint.cc
-src/KeyFrame.cc
-src/Map.cc
-src/MapDrawer.cc
-src/Optimizer.cc
-src/PnPsolver.cc
-src/Frame.cc
-src/KeyFrameDatabase.cc
-src/Sim3Solver.cc
-src/Initializer.cc
-src/Viewer.cc
+src/System.cpp
+src/Tracking.cpp
+src/LocalMapping.cpp
+src/LoopClosing.cpp
+src/ORBextractor.cpp
+src/ORBmatcher.cpp
+src/FrameDrawer.cpp
+src/Converter.cpp
+src/MapPoint.cpp
+src/KeyFrame.cpp
+src/Map.cpp
+src/MapDrawer.cpp
+src/Optimizer.cpp
+src/PnPsolver.cpp
+src/Frame.cpp
+src/KeyFrameDatabase.cpp
+src/Sim3Solver.cpp
+src/Initializer.cpp
+src/Viewer.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -83,17 +83,17 @@ ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
 
 add_executable(rgbd_tum
-Examples/RGB-D/rgbd_tum.cc)
+Examples/RGB-D/rgbd_tum.cpp)
 target_link_libraries(rgbd_tum ${PROJECT_NAME})
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo)
 
 add_executable(stereo_kitti
-Examples/Stereo/stereo_kitti.cc)
+Examples/Stereo/stereo_kitti.cpp)
 target_link_libraries(stereo_kitti ${PROJECT_NAME})
 
 add_executable(stereo_euroc
-Examples/Stereo/stereo_euroc.cc)
+Examples/Stereo/stereo_euroc.cpp)
 target_link_libraries(stereo_euroc ${PROJECT_NAME})
 
 
