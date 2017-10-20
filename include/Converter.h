@@ -42,15 +42,16 @@ public:
     /**
      * @brief 一个描述子矩阵到一串单行的描述子向量
      */
-    static std::vector<cv::Mat> toDescriptorVector(const cv::Mat &Descriptors);
+    static std::vector<cv::Mat> toDescriptorVector(const cv::Mat &Descriptors);//静态方法
 
     /**
      * @name toSE3Quat
      */
     ///@{
     /** cv::Mat to g2o::SE3Quat */
-    static g2o::SE3Quat toSE3Quat(const cv::Mat &cvT);
-    /** unimplemented */
+    //静态工作方法
+    static g2o::SE3Quat toSE3Quat(const cv::Mat &cvT);//cv::Mat to SE3Quat
+    /** unimplemented 未实现的*/
     static g2o::SE3Quat toSE3Quat(const g2o::Sim3 &gSim3);
     ///@}
 
