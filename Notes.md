@@ -1,30 +1,43 @@
 # ORBSLAM 源文件
+
     主要针对ORB-SLAM2代码的研读，作应有的总结与思考。
         伏久者飞必高，开先者谢独早。
         知此，可以免蹭蹬之忧，可以消躁之念。
-                                     ----献给自己
+
+<!-- TOC -->
+
+- [ORBSLAM 源文件](#orbslam-%E6%BA%90%E6%96%87%E4%BB%B6)
+    - [Converter](#converter)
+        - [主要函数接口/方法如下：](#%E4%B8%BB%E8%A6%81%E5%87%BD%E6%95%B0%E6%8E%A5%E5%8F%A3%E6%96%B9%E6%B3%95%E5%A6%82%E4%B8%8B%EF%BC%9A)
+        - [Converter源码解析](#converter%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90)
+            - [Converter.h](#converterh)
+            - [Converter.cpp](#convertercpp)
+
+<!-- /TOC -->
 
 ## Converter
 
-主要函数接口/方法如下：
-- 一个描述子矩阵到一串单行的描述子向量
+### 主要函数接口/方法如下：
+- 描述子矩阵转化一维描述子向量
     + static std::vector<cv::Mat> toDescriptorVector(const cv::Mat &Descriptors);
 - cv::Mat 转化成 g2o::SE3Quat
     + static g2o::SE3Quat toSE3Quat(const cv::Mat &cvT);
-- 转化成 CvMat
+- g2o::SE3Quat/Eigen 转化成 CvMat
     + static cv::Mat toCvMat(const g2o::SE3Quat &SE3);
     + static cv::Mat toCvMat(const g2o::Sim3 &Sim3);
     + static cv::Mat toCvMat(const Eigen::Matrix<double,4,4> &m);
     + static cv::Mat toCvMat(const Eigen::Matrix3d &m);
     + static cv::Mat toCvMat(const Eigen::Matrix<double,3,1> &m);
     + static cv::Mat toCvSE3(const Eigen::Matrix<double,3,3> &R, const Eigen::Matrix<double,3,1> &t);
-- 转化成 Eigen
+- cv::Mat 转化成 Eigen
     + static Eigen::Matrix<double,3,1> toVector3d(const cv::Mat &cvVector);
     + static Eigen::Matrix<double,3,1> toVector3d(const cv::Point3f &cvPoint);
     + static Eigen::Matrix<double,3,3> toMatrix3d(const cv::Mat &cvMat3);
     + static std::vector<float> toQuaternion(const cv::Mat &M);
 
-### Converter.h
+### Converter源码解析
+
+#### Converter.h
 
 ```c
 namespace ORB_SLAM2
@@ -81,7 +94,7 @@ public:
 }// namespace ORB_SLAM
 ```
 
-### Converter.cpp
+#### Converter.cpp
 
 ```c
 #include "Converter.h"
