@@ -3052,13 +3052,17 @@ track包含两部分：估计运动、跟踪局部地图
                         1. mState=OK;// 初始化成功，至此，初始化过程完成
 
                 
-        2. **跟踪相机位姿**
+        2. **跟踪相机位姿**  
+        2种模式：TrackWithMotionModel()和TrackReferenceKeyFrame()，主要区别就在于匹配的方式不一样  
+            1. SearchByProjection(mCurrentFrame,mLastFrame,th,mSensor==System::MONOCULAR);///mCurrentFrame的姿态是估计出来的。速度模型所用的。这个可以极大缩小匹配范围  
+            2. SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);参考帧模型所用的，和常规的差不太多。
             * mbOnlyTracking(false)：（默认）同时跟踪与定位，Local Mapping 被激活！
                 * 状态：`OK`//过了初始化部分。
-                    1. 检查并更新上一帧被替换的MapPoints。`CheckReplacedInLastFrame();`
-                    1. 跟踪上一帧或者参考帧或者重定位.
+                    + 检查并更新上一帧被替换的MapPoints。`CheckReplacedInLastFrame();`
+                    + 跟踪上一帧或者参考帧或者重定位.
                         *  检查 运动模型是空的或刚完成重定位
                             * 是：TrackReferenceKeyFrame();
+                                1. ORBmatcher matcher(0.7,true);
                                 1. 将当前帧的描述子转化为BoW向量// mCurrentFrame.ComputeBoW();
                                 1. 通过特征点的BoW加快当前帧与参考帧之间的特征点匹配//int nmatches = matcher.SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);
                                     * if(nmatches<15) return false;退出函数
@@ -3069,21 +3073,60 @@ track包含两部分：估计运动、跟踪局部地图
                                 1. 剔除优化后的outlier匹配点（MapPoints）
                                 1. return nmatchesMap>=10;
                             * 否：TrackWithMotionModel();
-                                1. 根据恒速模型设定当前帧的初始位姿
-                                1. 通过投影的方式在参考帧中找当前帧特征点的匹配点
-                                1. 优化每个特征点所对应3D点的投影误差即可得到位姿
-                                1. 若失败，TrackReferenceKeyFrame()。
+                                1. 对于双目或rgbd摄像头，根据深度值为上一关键帧补充生成新的MapPoints（由特征点构成）//UpdateLastFrame();
+                                    1. 更新最近一帧的位姿
+                                    1. 对于双目或rgbd摄像头，为上一帧临时生成新的MapPoints
+                                        1. 得到上一帧有深度值的特征点// `vDepthIdx.push_back(make_pair(z,i));` 
+                                        1. 按照深度从小到大排序//sort(vDepthIdx.begin(),vDepthIdx.end());
+                                        1. 将距离比较近的点包装成MapPoints（前100个），这些点都不会添加属性，仅仅为了提高双目的跟踪率
+                                            1. 不是地图点//if(!pMP)，bCreateNew = false;
+                                            1. 没有被记录的地图点（没有属性的点）pMP->Observations()<1
+                                            1. 把这些点标记成临时 //mlpTemporalPoints.push_back(pNewMP);
+                                1. 根据恒速模型设定当前帧的初始位姿，认为这两帧之间的相对运动和之前两帧间相对运动相同；mVelocity：其实就是2帧之间的变换矩阵，这样通过乘以这样一个变换矩阵“预测”mCurrentFrame的姿态；因为新来的帧还没有匹配就不知道姿态，但要缩小匹配范围就要事先“知道”姿态变化！//mCurrentFrame.SetPose(mVelocity*mLastFrame.mTcw);
+                                1. 通过投影的方式在参考帧中找当前帧特征点的匹配点（难点）//SearchByProjection(mCurrentFrame,mLastFrame,th,mSensor==System::MONOCULAR)；//这个函数需要两个帧`frame`,所以需要他们各自的参数`CurrentFrame.mTcw`。所以要用这个函数必须事先给定，哪怕估计出来的`CurrentFrame.mTcw`。
+                                    * 如果跟踪的点少，则扩大搜索半径再来一次.第二次失败，直接跳出函数`TrackWithMotionModel()`
+                                1. 优化每个特征点所对应3D点的投影误差即可得到位姿//PoseOptimization(&mCurrentFrame);
+                                1. 优化位姿后剔除outlier的mvpMapPoints
+                                1. return nmatchesMap>=10;
+                                    * 如果为false: bOK = TrackReferenceKeyFrame();
                 * 状态非`OK`
                     * Relocalization();//BOW搜索，PnP求解位姿
                         1. 计算当前帧特征点的Bow映射
-                        1. 找到与当前帧相似的候选关键帧
-                        1. 通过BoW进行匹配
+                        1. 找到与当前帧相似的候选关键帧(vector)
+                            * `vector<KeyFrame*> vpCandidateKFs = mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame);`
+                        1. 通过BoW对这些候选关键帧与当前帧进行匹配
+                        ！！！开始循环遍历候选帧！！！
+                            * SearchByBoW(pKF,mCurrentFrame,vvpMapPointMatches[i]);
+                            * if(nmatches<15) continue;
+                            * if(nmatches>15) 初始化PnPsolver
+                                * `PnPsolver* pSolver = new PnPsolver(mCurrentFrame,vvpMapPointMatches[i]);`
+                                * `pSolver->SetRansacParameters(0.99,10,300,4,0.5,5.991);`
                         1. 通过EPnP算法估计姿态
-                        1. 通过PoseOptimization对姿态进行优化求解
-                        1. 如果内点较少，则通过投影的方式对之前未匹配的点进行匹配，再进行优化求解
+                            1. PnPsolver* pSolver = vpPnPsolvers[i];
+                            1. cv::Mat Tcw = pSolver->iterate(5,bNoMore,vbInliers,nInliers);
+                                1. If Ransac reachs max. iterations discard keyframe
+                                1. 如果相机位姿算出来了，优化// Tcw.copyTo(mCurrentFrame.mTcw);
+                                1. 给mCurrentFrame挑出匹配的地图点，好进行BA优化
+                        1. 通过PoseOptimization对姿态进行优化求解//int nGood = Optimizer::PoseOptimization(&mCurrentFrame)；//返回内点数量
+                        1. 如果内点较少（<50），则通过投影的方式对之前未匹配的点进行匹配，再进行优化求解
+                            1. `int nadditional =matcher2.SearchByProjection(mCurrentFrame,vpCandidateKFs[i],sFound,10,100);`//增加点数
+                            * if(nadditional+nGood>=50)//如果这次满足优化的点数了
+                                *  nGood = Optimizer::PoseOptimization(&mCurrentFrame);
+                                *  如果这样操作后还是少，比如在（30-50）
+                                    * 该帧的发现点数变成操作之后（后添加的）的所有点//sFound.insert(mCurrentFrame.mvpMapPoints[ip]);
+                                    * 再找一次，不过in a narrower window。`nadditional =matcher2.SearchByProjection(mCurrentFrame,vpCandidateKFs[i],sFound,3,64);`
+                                    * 如果返回值大于50，BA优化，标记下mvbOutlier。....
+                        1. 如果内点较少（>50）
+                            1. bMatch = true;//标志位！结束循环标志位！
+                            1. break; //退出循环，这么多候选帧里就你了！重定位成功！！！
+                        ！！！退出循环！！！
+                        1. 如果循环完后发现还是不行bMatch还是false.//return false;
+                        1. 如果循环完后，bMatch变色了！
+                            * mnLastRelocFrameId = mCurrentFrame.mnId;//当前帧的id给他
+                            * return true;
             * mbOnlyTracking(true)://Localization Mode: Local Mapping is deactivated，只进行跟踪tracking，局部地图不工作，不插入关键帧。
                 * 状态：`LOST`
-                    * Relocalization();
+                    * Relocalization();（见上展开）
                         1. 计算当前帧特征点的Bow映射
                         1. 找到与当前帧相似的候选关键帧
                         1. 通过BoW进行匹配
@@ -3098,25 +3141,51 @@ track包含两部分：估计运动、跟踪局部地图
                     * `mbVO==1`：mbVO为1，则表明此帧匹配了很少的3D map点，少于10个，要跪的节奏，既做跟踪又做定位
                         1. 判断`!mVelocity.empty()`
                             * 有运动模型：TrackWithMotionModel()
-                        1. bOKReloc = Relocalization();//重定位
+                        1. 没有，bOKReloc = Relocalization();//重定位
                         1. 如果重定位没有成功，但是如果跟踪成功
                             * 再次观察`mbVO`
                                 * `mbVO==1`: 更新当前帧的MapPoints被观测程度
                         1. 如果重定位成功：**只要重定位成功整个跟踪过程正常进行（定位与跟踪，更相信重定位）**
                             * mbVO = false
                             * bOK = bOKReloc || bOKMM;  
-        3. **局部地图跟踪**
+        3. **局部地图跟踪**： 当前帧、当前帧的MapPoints、当前关键帧与其它关键帧共视关系
 
             在帧间匹配得到初始的姿态后，现在对local map进行跟踪得到更多的匹配，并优化当前位姿
             local map:当前帧、当前帧的MapPoints、当前关键帧与其它关键帧共视关系
-            在步骤2.1中主要是两两跟踪（恒速模型跟踪上一帧、跟踪参考帧），这里搜索局部关键帧后搜集所有局部MapPoints，
-            然后将局部MapPoints和当前帧进行投影匹配，得到更多匹配的MapPoints后进行Pose优化。
+            在步骤2.1中主要是两两跟踪（恒速模型跟踪上一帧、跟踪参考帧），这里搜索局部关键帧后搜集所有局部MapPoints,然后将局部MapPoints和当前帧进行投影匹配，得到更多匹配的MapPoints后进行Pose优化。
             
             * mCurrentFrame.mpReferenceKF = mpReferenceKF;//将最新的关键帧作为reference frame
             * 判断`!mbOnlyTracking`为真//判断是不是同时跟踪与定位
                 * `bOK`: TrackLocalMap();
+                    1. UpdateLocalMap()//更新局部关键帧mvpLocalKeyFrames和局部地图点mvpLocalMapPoints
+                        +  mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
+                        + **UpdateLocalKeyFrames();** 
+                            +  遍历当前帧的MapPoints，记录所有能观测到当前帧MapPoints的关键帧
+                            +  更新局部关键帧（mvpLocalKeyFrames），添加局部关键帧有三个策略
+                                +  先清空局部关键帧
+                                +  能观测到当前帧MapPoints的关键帧作为局部关键帧
+                                +  记录最强关键帧
+                                +  与策略1得到的局部关键帧共视程度很高的关键帧作为局部关键帧
+                                    +  最佳共视的10帧
+                                    +  自己的子关键帧
+                                    +  自己的父关键帧
+                        +  UpdateLocalPoints();
+                            +  清空局部MapPoints
+                            +  遍历局部关键帧mvpLocalKeyFrames
+                            +  将局部关键帧的MapPoints添加到mvpLocalMapPoints
+                    1. SearchLocalPoints();//在局部地图中查找与当前帧匹配的MapPoints
+                        1. 遍历当前帧的mvpMapPoints，标记这些MapPoints不参与之后的搜索
+                        1. 将所有局部MapPoints投影到当前帧，判断是否在视野范围内，然后进行投影匹配
+                            1. 已经被当前帧观测到MapPoint不再判断是否能被当前帧观测到
+                            1. 判断LocalMapPoints中的点是否在在视野内
+                            1. 只有在视野范围内的MapPoints才参与之后的投影匹配
+                            1. 对视野范围内的MapPoints通过投影进行特征点匹配//SearchByProjection(mCurrentFrame,mvpLocalMapPoints,th);
+                    1. 更新局部所有MapPoints后对位姿再次优化//Optimizer::PoseOptimization(&mCurrentFrame)
+                    1. 更新当前帧的MapPoints被观测程度，并统计跟踪局部地图的效果
+                    1. 决定是否跟踪成功
             * 判断`!mbOnlyTracking`为假：
-                * 重定位成功　`if(bOK && !mbVO)`:bOK = TrackLocalMap();
+                * 重定位成功　`if(bOK && !mbVO)`
+                    * bOK = TrackLocalMap();
             * `if(bOK)` : `mState = OK;`否则` mState=LOST;`.
             * Update drawer
             * 再次判断`if(bOK)`//If tracking were good, check if we insert a keyframe
@@ -3129,6 +3198,49 @@ track包含两部分：估计运动、跟踪局部地图
                     * Clean VO matches。在当前帧中将这些MapPoints剔除
                     * 清除临时的MapPoints，这些MapPoints在TrackWithMotionModel的UpdateLastFrame函数里生成（仅双目和rgbd）从MapPoints数据库中删除；这里生成的仅仅是为了提高双目或rgbd摄像头的帧间跟踪效果，用完以后就扔了，没有添加到地图中。
                     * 检测并插入关键帧，对于双目会产生新的MapPoints
+                        * if(NeedNewKeyFrame())
+                            1. 如果用户在界面上选择重定位，那么将不插入关键帧
+                            1. 如果局部地图被闭环检测使用，则不插入关键帧//if(mpLocalMapper->isStopped() || mpLocalMapper->stopRequested())
+                            1. 判断是否距离上一次重定位的时间太短//`if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && nKFs>mMaxFrames)`
+                                * mCurrentFrame.mnId是当前帧的ID
+                                * mnLastRelocFrameId是最近一次重定位帧的ID
+                                * mMaxFrames等于图像输入的帧率
+                                * 如果关键帧比较少，则考虑插入关键帧
+                                * 或距离上一次重定位超过1s，则考虑插入关键帧
+                                * nKFs:地图里的关键帧
+                            1. 得到参考关键帧跟踪到的MapPoints数量
+                            1. 查询局部地图管理器是否繁忙
+                            1. 对于双目或RGBD摄像头，统计总的可以添加的MapPoints数量和跟踪到地图中的MapPoints数量
+                            1. 决策是否需要插入关键帧
+                                1. 设定inlier阈值，和之前帧特征点匹配的inlier比例。关键帧只有一帧，那么插入关键帧的阈值设置很低//thRefRatio = 0.4f
+                                1. 如果是单目， thRefRatio = 0.9f;
+                                1. MapPoints中和地图关联的比例阈值// float thMapRatio = 0.35f;
+                                    1. 很长时间没有插入关键帧//const bool c1a = mCurrentFrame.mnId>=mnLastKeyFrameId+mMaxFrames;
+                                    1. localMapper处于空闲状态//const bool c1b = (mCurrentFrame.mnId>=mnLastKeyFrameId+mMinFrames && bLocalMappingIdle);
+                                    1. 跟踪要跪的节奏，0.25和0.3是一个比较低的阈值//const bool c1c =  mSensor!=System::MONOCULAR && (mnMatchesInliers<nRefMatches*0.25 || ratioMap<0.3f) ;
+                                1. 阈值比c1c要高，与之前参考帧（最近的一个关键帧）重复度不是太高//const bool c2 = ((mnMatchesInliers<nRefMatches*thRefRatio || ratioMap<thMapRatio) && mnMatchesInliers>15);
+                        * CreateNewKeyFrame();
+                            1. 将当前帧构造成关键帧//KeyFrame* pKF = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
+                            1. 将当前关键帧设置为当前帧的参考关键帧
+                            1. 对于双目或rgbd摄像头，为当前帧生成新的MapPoints
+                                1. 根据Tcw计算mRcw、mtcw和mRwc、mOw//mCurrentFrame.UpdatePoseMatrices();
+                                1. 得到当前帧深度小于阈值的特征点
+                                1. 按照深度从小到大排序
+                                1. 将距离比较近的点包装成MapPoints
+                                1. 每次创建MapPoint后都要添加地图点属性
+                                    1. pNewMP->AddObservation(pKF,i);
+                                    1. pKF->AddMapPoint(pNewMP,i);
+                                    1. pNewMP->ComputeDistinctiveDescriptors();
+                                    1. pNewMP->UpdateNormalAndDepth();
+                                    1. mpMap->AddMapPoint(pNewMP);
+                                1. mCurrentFrame.mvpMapPoints[i]=pNewMP;
+                                1. nPoints>100 退出！
+                            1. 局部建图：mpLocalMapper->InsertKeyFrame(pKF);
+                            1. mpLocalMapper->SetNotStop(false);
+            * if(mState==LOST)
+                * 判断地图里的关键帧数量`mpMap->KeyFramesInMap()<=5`
+                * mpSystem->Reset();
+                *  return;
     *  记录位姿信息，用于轨迹复现
         1.  成功：计算相对姿态T_currentFrame_referenceKeyFrame
         1.  失败：相对位姿使用上一次值
