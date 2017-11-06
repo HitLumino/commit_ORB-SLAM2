@@ -64,7 +64,7 @@
             - [Tracking公有成员函数](#tracking%E5%85%AC%E6%9C%89%E6%88%90%E5%91%98%E5%87%BD%E6%95%B0)
             - [Tracking私有成员函数](#tracking%E7%A7%81%E6%9C%89%E6%88%90%E5%91%98%E5%87%BD%E6%95%B0)
             - [Tracking私有变量](#tracking%E7%A7%81%E6%9C%89%E5%8F%98%E9%87%8F)
-        - [LocalMapping线程源码分析](#localmapping%E7%BA%BF%E7%A8%8B%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90)
+        - [LocalMapping线程](#localmapping%E7%BA%BF%E7%A8%8B)
 
 <!-- /TOC -->
 
@@ -3471,4 +3471,161 @@ enum eTrackingState{
     * bool mbRGB;
 * list<MapPoint*> mlpTemporalPoints;
 
-### LocalMapping线程源码分析
+### LocalMapping线程
+* void LocalMapping::Run()
+    * SetAcceptKeyFrames(false);//告诉Tracking，LocalMapping正处于繁忙状态,LocalMapping线程处理的关键帧都是Tracking线程发过的,在LocalMapping线程还没有处理完关键帧之前Tracking线程最好不要发送太快。
+    ```c
+    void LocalMapping::SetAcceptKeyFrames(bool flag)
+    {
+        unique_lock<mutex> lock(mMutexAccept);
+        mbAcceptKeyFrames=flag;
+    }
+    ```
+    * 判断等待处理的关键帧列表不为空//CheckNewKeyFrames()
+        * 等待处理的关键帧列表不为空
+            * std::list<KeyFrame*> mlNewKeyFrames; ///< 等待处理的关键帧列表,Tracking线程向LocalMapping中插入关键帧是先插入到该队列中
+            ```c
+            bool LocalMapping::CheckNewKeyFrames()
+            {
+                unique_lock<mutex> lock(mMutexNewKFs);
+                return(!mlNewKeyFrames.empty());
+            }
+            ```
+            * **计算关键帧特征点的BoW映射，将关键帧插入地图//ProcessNewKeyFrame();**
+                1. 从缓冲队列中取出一帧关键帧
+                    ```c
+                    unique_lock<mutex> lock(mMutexNewKFs);
+                    // 从列表中获得一个等待被插入的关键帧
+                    mpCurrentKeyFrame = mlNewKeyFrames.front();
+                    mlNewKeyFrames.pop_front();
+                    ```
+                1. 计算该关键帧特征点的Bow映射关系//mpCurrentKeyFrame->ComputeBoW();
+                1. 跟踪局部地图过程中新匹配上的MapPoints和当前关键帧绑定  
+                在TrackLocalMap函数中将局部地图中的MapPoints与当前帧进行了匹配，但没有对这些匹配上的MapPoints与当前帧进行关联 
+                    *　获取当前帧的mvpMapPoints.(与keypoints匹配上的地图点)
+                        * `!pMP->IsInKeyFrame(mpCurrentKeyFrame)`//不在当前帧里,没有被赋予观察属性
+                            * 添加地图点的属性
+                        * `pMP->IsInKeyFrame(mpCurrentKeyFrame)`//this can only happen for new stereo points inserted by the Tracking
+                            * mlpRecentAddedMapPoints.push_back(pMP);
+                                * 当前帧生成的MapPoints
+                                * 将双目或RGBD跟踪过程中新插入的MapPoints放入mlpRecentAddedMapPoints，等待检查
+                                * CreateNewMapPoints函数中通过三角化也会生成MapPoints
+                                * 这些MapPoints都会经过MapPointCulling函数的检验
+                
+                1. 更新关键帧间的连接关系，Covisibility图和Essential图(tree)//mpCurrentKeyFrame->UpdateConnections();
+                1. 将该关键帧插入到地图中//mpMap->AddKeyFrame(mpCurrentKeyFrame);
+            * 剔除ProcessNewKeyFrame函数中引入的不合格MapPoints//MapPointCulling();
+                * 检查那些当前帧生成的MapPoints(双目),将双目或RGBD跟踪过程中新插入的MapPoints放入mlpRecentAddedMapPoints，等待检查.//list<MapPoint*>::iterator lit = mlpRecentAddedMapPoints.begin();
+                    * 已经是坏点的MapPoints直接从检查链表中删除//lit = mlpRecentAddedMapPoints.erase(lit);
+                        * pMP->SetBadFlag();
+                    * 将不满足GetFoundRatio()<0.25f剔除//(mnFound)/mnVisible
+                        * 跟踪到该MapPoint的Frame数相比预计可观测到该MapPoint的Frame数的比例需大于25%,注意不一定是关键帧.
+                        * pMP->SetBadFlag();
+                    * 从该点建立开始，到现在已经过了不小于2个关键帧,但是观测到该点的关键帧数却不超过cnThObs帧，那么该点检验不合格
+                        * 单目是2,双目是3
+                        * pMP->SetBadFlag();
+                    * 从建立该点开始，已经过了3个关键帧而没有被剔除，则认为是质量高的点
+                        * 因此没有SetBadFlag()，仅从队列中删除，放弃继续对该MapPoint的检测
+            * **相机运动过程中与相邻关键帧通过三角化恢复出一些MapPoints//CreateNewMapPoints();**
+                1. 在当前关键帧的共视关键帧中找到共视程度最高的nn帧相邻帧vpNeighKFs//单目20 ,双目10
+                1. 得到当前关键帧在世界坐标系中的坐标//cv::Mat Ow1 = mpCurrentKeyFrame->GetCameraCenter();
+                1. 遍历相邻关键帧vpNeighKFs
+                    1. 邻接的关键帧在世界坐标系中的坐标//cv::Mat Ow2 = pKF2->GetCameraCenter();
+                    1. 基线向量，两个关键帧间的相机位移//cv::Mat vBaseline = Ow2-Ow1;
+                    1. 基线长度//const float baseline = cv::norm(vBaseline);
+                    1. 判断相机运动的基线是不是足够长
+                        * 如果是立体相机，关键帧间距太小时不生成3D点//if(baseline<pKF2->mb),continue;
+                        * 如果单目
+                            * 评估遍历的当前关键帧场景深度，q=2表示中值//medianDepthKF2 = pKF2->ComputeSceneMedianDepth(2);
+                            * baseline与景深的比例//ratioBaselineDepth = baseline/medianDepthKF2;
+                            * if(ratioBaselineDepth<0.01);continue;
+                    1. 根据两个关键帧的位姿计算它们之间的基本矩阵//cv::Mat F12 = ComputeF12(mpCurrentKeyFrame,pKF2);
+                    1. 通过极线约束限制匹配时的搜索范围，进行特征点匹配//matcher.SearchForTriangulation(mpCurrentKeyFrame,pKF2,F12,vMatchedIndices,false);
+                    1. 对每对匹配通过三角化生成3D点
+                        1. 取出匹配特征点对(一对)
+                        1. 利用匹配点反投影得到视差角
+                            * 特征点反投影(x,y,1)到相机坐标系//cv::Mat xn1 = (cv::Mat_<float>(3,1) << (kp1.pt.x-cx1)*invfx1, (kp1.pt.y-cy1)*invfy1, 1.0);
+                            * 由相机坐标系转到世界坐标系，得到视差角余弦值 
+                                * cv::Mat ray1 = Rwc1*xn1;
+                                * cv::Mat ray2 = Rwc2*xn2;
+                                * cosParallaxRays = ray1.dot(ray2)/(cv::norm(ray1)*cv::norm(ray2));
+                            * 对于双目，利用双目得到视差角
+                                * 当前关键帧是双目的话,atan2(b/2,z)就是视差//cosParallaxStereo1 = cos(2*atan2(mpCurrentKeyFrame->mb/2,mpCurrentKeyFrame->mvDepth[idx1]));
+                                * 如果匹配的候选的关键帧是双目.//cos(2*atan2(pKF2->mb/2,pKF2->mvDepth[idx2]));
+                                * 取小,也就是角度大的//cosParallaxStereo = min(cosParallaxStereo1,cosParallaxStereo2);
+                            * 三角化恢复3D点
+                                *  视差角度小时用三角法恢复3D点，视差角大时用双目恢复3D点（双目以及深度有效）
+                                *  `cosParallaxRays<cosParallaxStereo`:三角法算深度
+                                    *  SVD分解
+                                *  bStereo1 && `cosParallaxStereo1<cosParallaxStereo2`//当前帧双目,且角度比匹配帧大
+                                    *  x3D = mpCurrentKeyFrame->UnprojectStereo(idx1);
+                                * bStereo2 && cosParallaxStereo2<cosParallaxStereo1//匹配帧双目,且角度比当前帧大
+                                    * x3D = pKF2->UnprojectStereo(idx2);
+                                * continue; //No stereo and very low parallax
+                            * 检测生成的3D点是否在相机前方
+                                * float z1 = Rcw1.row(2).dot(x3Dt)+tcw1.at<float>(2);//z>0,
+                            * 计算3D点在 当前关键帧( mpCurrentKeyFrame)下 的重投影误差
+                            * 计算3D点在 候选关键帧(pKF2)下 的重投影误差    (两头都要检查,互相投影)
+                            * 检查尺度连续性
+                            * 三角化生成3D点成功，构造成MapPoint
+                                * MapPoint* pMP = new MapPoint(x3D,mpCurrentKeyFrame,mpMap);
+                            * 为该MapPoint添加属性：
+                                * pMP->AddObservation(mpCurrentKeyFrame,idx1);
+                                * pMP->AddObservation(pKF2,idx2);
+                                * mpCurrentKeyFrame->AddMapPoint(pMP,idx1);
+                                * pKF2->AddMapPoint(pMP,idx2);
+                                * pMP->ComputeDistinctiveDescriptors();
+                                * pMP->UpdateNormalAndDepth();
+                                * mpMap->AddMapPoint(pMP);
+                            * 将新产生的点放入检测队列//mlpRecentAddedMapPoints.push_back(pMP);
+                                * 这些MapPoints都会经过MapPointCulling函数的检验
+                            * nnew++;
+
+            * 判断是否已经处理完队列中的最后的一个关键帧// if(!CheckNewKeyFrames())
+                * SearchInNeighbors();
+                    * 获得当前关键帧在covisibility图中权重排名前nn的邻接关键帧
+                        * 找共视帧(10),加入vpTargetKFs;再对这些加入的一级帧,依次挑选他们各自的共视帧(5),二级帧,加入vpTargetKFs
+                        * 将当前帧的地图点`mpCurrentKeyFrame->GetMapPointMatches()`,依次与这些`vpTargetKFs`投影融合比较
+                            * Fuse(KeyFrame *pKF, const vector<MapPoint *> &vpMapPoints, const float th)
+                                * 如果MapPoint能匹配关键帧的特征点，并且该点有对应的MapPoint，那么将两个MapPoint合并（选择观测数多的）
+                                * 如果MapPoint能匹配关键帧的特征点，并且该点没有对应的MapPoint，那么为该点添加MapPoint
+                        * 遍历`vpTargetKF`,再依次遍历他们的MapPoints 全部无重复加入`vpFuseCandidates`
+                        * Fuse(mpCurrentKeyFrame,vpFuseCandidates);
+                        * 更新当前帧MapPoints的描述子，深度，观测主方向等属性
+                        * 更新当前帧的MapPoints后更新与其它帧的连接关系//mpCurrentKeyFrame->UpdateConnections();
+            * mbAbortBA = false;
+            * 已经处理完队列中的最后的一个关键帧，并且闭环检测没有请求停止LocalMapping//if(!CheckNewKeyFrames() && !stopRequested())
+                * 判断地图里的关键帧数是不是大于2，如果是就BA
+                * 检测并剔除当前帧相邻的关键帧中冗余的关键帧//KeyFrameCulling();在Covisibility Graph中的关键帧，其90%以上的MapPoints能被其他关键帧（至少3个）观测到，则认为该关键帧为冗余关键帧。
+                    * 根据Covisibility Graph提取当前帧的共视关键帧//vector<KeyFrame*> vpLocalKeyFrames = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
+                    * 提取每个共视关键帧的MapPoints
+                    * 遍历该局部关键帧的MapPoints，判断是否90%以上的MapPoints能被其它关键帧（至少3个）观测到
+                        * 对于双目:仅考虑近处的MapPoints，不超过mbf * 35 / fx
+                        * MapPoints至少被三个关键帧观测到
+                            * 判断该MapPoint是否同时被三个关键帧观测到
+                            * 尺度约束，要求MapPoint在该局部关键帧的特征尺度大于（或近似于）其它关键帧的特征尺度
+                        * 该局部关键帧90%以上的MapPoints能被其它关键帧（至少3个）观测到，则认为是冗余关键帧
+            * 将当前帧加入到闭环检测队列中//mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+                * mlpLoopKeyFrameQueue.push_back(pKF);
+        * 收到停止局部建图命令
+            * while(isStopped() && !CheckFinish())
+            * `std::this_thread::sleep_for(std::chrono::milliseconds(3));`
+        * ResetIfRequested()
+            ```c
+                void LocalMapping::ResetIfRequested()
+                {
+                    unique_lock<mutex> lock(mMutexReset);
+                    if(mbResetRequested)
+                    {
+                        mlNewKeyFrames.clear();
+                        mlpRecentAddedMapPoints.clear();
+                        mbResetRequested=false;
+                    }
+                }
+            ```
+    * SetAcceptKeyFrames(true);//告诉Tracking，LocalMapping不繁忙
+    * 如果收到确认结束`if(CheckFinish())`
+        * break;//退出局部见图
+    * std::this_thread::sleep_for(std::chrono::milliseconds(3));
+    * SetFinish();//mbFinished = false变色了.不进行while(1)循环了.
+
