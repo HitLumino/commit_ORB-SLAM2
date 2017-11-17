@@ -137,11 +137,11 @@ class EdgeSim3ProjectXYZ : public  BaseBinaryEdge<2, Vector2d,  VertexSBAPointXY
 
     void computeError()
     {
-      const VertexSim3Expmap* v1 = static_cast<const VertexSim3Expmap*>(_vertices[1]);
+      const VertexSim3Expmap* v1 = static_cast<const VertexSim3Expmap*>(_vertices[1]);//
       const VertexSBAPointXYZ* v2 = static_cast<const VertexSBAPointXYZ*>(_vertices[0]);
 
       Vector2d obs(_measurement);
-      _error = obs-v1->cam_map1(project(v1->estimate().map(v2->estimate())));
+      _error = obs-v1->cam_map1(project(v1->estimate().map(v2->estimate())));//点左乘T,然后在转换到相机坐标系
     }
 
    // virtual void linearizeOplus();

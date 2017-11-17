@@ -31,7 +31,7 @@
 namespace ORB_SLAM2
 {
 
-class KeyFrame;
+class KeyFrame;//前向声明
 class Map;
 class Frame;
 
@@ -131,7 +131,7 @@ protected:
 
     // Keyframes observing the point and associated index in keyframe
     std::map<KeyFrame*,size_t> mObservations; ///< 观测到该MapPoint的KF和该MapPoint在KF中的索引
-
+//
     // Mean viewing direction
     // 该MapPoint平均观测方向
     cv::Mat mNormalVector;
@@ -140,8 +140,8 @@ protected:
     // 每个3D点也有一个descriptor
     // 如果MapPoint与很多帧图像特征点对应（由keyframe来构造时），那么距离其它描述子的平均距离最小的描述子是最佳描述子
     // MapPoint只与一帧的图像特征点对应（由frame来构造时），那么这个特征点的描述子就是该3D点的描述子
-    cv::Mat mDescriptor; ///< 通过 ComputeDistinctiveDescriptors() 得到的最优描述子
 
+    cv::Mat mDescriptor; ///< 通过 ComputeDistinctiveDescriptors() 得到的最优描述子
     // Reference KeyFrame
     KeyFrame* mpRefKF;
 

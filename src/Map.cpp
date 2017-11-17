@@ -35,10 +35,10 @@ Map::Map():mnMaxKFid(0)
  */
 void Map::AddKeyFrame(KeyFrame *pKF)
 {
-    unique_lock<mutex> lock(mMutexMap);
+    unique_lock<mutex> lock(mMutexMap);//锁住mMutexMap这个互斥元，如果已经被其他unique_lock锁住，暂时阻塞
     mspKeyFrames.insert(pKF);
     if(pKF->mnId>mnMaxKFid)
-        mnMaxKFid=pKF->mnId;
+        mnMaxKFid=pKF->mnId;//更新地图最新关键帧的id
 }
 
 /**
@@ -47,7 +47,7 @@ void Map::AddKeyFrame(KeyFrame *pKF)
  */
 void Map::AddMapPoint(MapPoint *pMP)
 {
-    unique_lock<mutex> lock(mMutexMap);
+    unique_lock<mutex> lock(mMutexMap);//锁住mMutexMap
     mspMapPoints.insert(pMP);
 }
 

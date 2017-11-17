@@ -229,9 +229,9 @@ protected:
 
     // Spanning Tree and Loop Edges
     // std::set是集合，相比vector，进行插入数据这样的操作时会自动排序
-    bool mbFirstConnection;
+    bool mbFirstConnection;//首次链接
     KeyFrame* mpParent;
-    std::set<KeyFrame*> mspChildrens;
+    std::set<KeyFrame*> mspChildrens;//他们的节点是那个得分最高的关键帧
     std::set<KeyFrame*> mspLoopEdges;
 
     // Bad flags

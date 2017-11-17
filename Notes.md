@@ -65,6 +65,10 @@
             - [Tracking私有成员函数](#tracking%E7%A7%81%E6%9C%89%E6%88%90%E5%91%98%E5%87%BD%E6%95%B0)
             - [Tracking私有变量](#tracking%E7%A7%81%E6%9C%89%E5%8F%98%E9%87%8F)
         - [LocalMapping线程](#localmapping%E7%BA%BF%E7%A8%8B)
+            - [步骤:](#%E6%AD%A5%E9%AA%A4)
+        - [LoopClosing线程](#loopclosing%E7%BA%BF%E7%A8%8B)
+            - [Tips：](#tips%EF%BC%9A)
+            - [步骤](#%E6%AD%A5%E9%AA%A4)
 
 <!-- /TOC -->
 
@@ -3472,6 +3476,9 @@ enum eTrackingState{
 * list<MapPoint*> mlpTemporalPoints;
 
 ### LocalMapping线程
+
+#### 步骤:  
+
 * void LocalMapping::Run()
     * SetAcceptKeyFrames(false);//告诉Tracking，LocalMapping正处于繁忙状态,LocalMapping线程处理的关键帧都是Tracking线程发过的,在LocalMapping线程还没有处理完关键帧之前Tracking线程最好不要发送太快。
     ```c
@@ -3481,18 +3488,11 @@ enum eTrackingState{
         mbAcceptKeyFrames=flag;
     }
     ```
-    * 判断等待处理的关键帧列表不为空//CheckNewKeyFrames()
-        * 等待处理的关键帧列表不为空
+    * 判断等待处理的关键帧列表不为空//CheckNewKeyFrames()//每次执行ProcessNewKeyFrame(),弹出一个
+        * if(CheckNewKeyFrames())//如果等待处理的关键帧列表不为空!!!开始循环!!!
             * std::list<KeyFrame*> mlNewKeyFrames; ///< 等待处理的关键帧列表,Tracking线程向LocalMapping中插入关键帧是先插入到该队列中
-            ```c
-            bool LocalMapping::CheckNewKeyFrames()
-            {
-                unique_lock<mutex> lock(mMutexNewKFs);
-                return(!mlNewKeyFrames.empty());
-            }
-            ```
             * **计算关键帧特征点的BoW映射，将关键帧插入地图//ProcessNewKeyFrame();**
-                1. 从缓冲队列中取出一帧关键帧
+                1. 从缓冲队列中弹出一帧关键帧
                     ```c
                     unique_lock<mutex> lock(mMutexNewKFs);
                     // 从列表中获得一个等待被插入的关键帧
@@ -3501,8 +3501,8 @@ enum eTrackingState{
                     ```
                 1. 计算该关键帧特征点的Bow映射关系//mpCurrentKeyFrame->ComputeBoW();
                 1. 跟踪局部地图过程中新匹配上的MapPoints和当前关键帧绑定  
-                在TrackLocalMap函数中将局部地图中的MapPoints与当前帧进行了匹配，但没有对这些匹配上的MapPoints与当前帧进行关联 
-                    *　获取当前帧的mvpMapPoints.(与keypoints匹配上的地图点)
+                在TrackLocalMap函数中将局部地图中的MapPoints与当前帧进行了匹配，但没有对这些匹配上的MapPoints与当前帧进行关联.
+                    * 获取当前帧的mvpMapPoints.(与keypoints匹配上的地图点)
                         * `!pMP->IsInKeyFrame(mpCurrentKeyFrame)`//不在当前帧里,没有被赋予观察属性
                             * 添加地图点的属性
                         * `pMP->IsInKeyFrame(mpCurrentKeyFrame)`//this can only happen for new stereo points inserted by the Tracking
@@ -3581,8 +3581,8 @@ enum eTrackingState{
                                 * 这些MapPoints都会经过MapPointCulling函数的检验
                             * nnew++;
 
-            * 判断是否已经处理完队列中的最后的一个关键帧// if(!CheckNewKeyFrames())
-                * SearchInNeighbors();
+            * 判断是否已经处理完队列中的最后的一个关键帧// if(!CheckNewKeyFrames())//!!!运行到这里,最后一帧也没了.最后一次循环了!!!
+                * SearchInNeighbors();//!!!只在最后一帧处理完的时候执行!!!
                     * 获得当前关键帧在covisibility图中权重排名前nn的邻接关键帧
                         * 找共视帧(10),加入vpTargetKFs;再对这些加入的一级帧,依次挑选他们各自的共视帧(5),二级帧,加入vpTargetKFs
                         * 将当前帧的地图点`mpCurrentKeyFrame->GetMapPointMatches()`,依次与这些`vpTargetKFs`投影融合比较
@@ -3593,7 +3593,7 @@ enum eTrackingState{
                         * Fuse(mpCurrentKeyFrame,vpFuseCandidates);
                         * 更新当前帧MapPoints的描述子，深度，观测主方向等属性
                         * 更新当前帧的MapPoints后更新与其它帧的连接关系//mpCurrentKeyFrame->UpdateConnections();
-            * mbAbortBA = false;
+            * mbAbortBA = false;//确保每次不打断BA优化
             * 已经处理完队列中的最后的一个关键帧，并且闭环检测没有请求停止LocalMapping//if(!CheckNewKeyFrames() && !stopRequested())
                 * 判断地图里的关键帧数是不是大于2，如果是就BA
                 * 检测并剔除当前帧相邻的关键帧中冗余的关键帧//KeyFrameCulling();在Covisibility Graph中的关键帧，其90%以上的MapPoints能被其他关键帧（至少3个）观测到，则认为该关键帧为冗余关键帧。
@@ -3607,10 +3607,11 @@ enum eTrackingState{
                         * 该局部关键帧90%以上的MapPoints能被其它关键帧（至少3个）观测到，则认为是冗余关键帧
             * 将当前帧加入到闭环检测队列中//mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
                 * mlpLoopKeyFrameQueue.push_back(pKF);
-        * 收到停止局部建图命令
+            * !!!循环结束!!!
+        * else if(Stop())//或者可能收到停止局部建图命令
             * while(isStopped() && !CheckFinish())
             * `std::this_thread::sleep_for(std::chrono::milliseconds(3));`
-        * ResetIfRequested()
+        * 如果需要reset //ResetIfRequested()
             ```c
                 void LocalMapping::ResetIfRequested()
                 {
@@ -3623,9 +3624,46 @@ enum eTrackingState{
                     }
                 }
             ```
+    等待处理的关键帧列表处理完了
     * SetAcceptKeyFrames(true);//告诉Tracking，LocalMapping不繁忙
     * 如果收到确认结束`if(CheckFinish())`
         * break;//退出局部见图
     * std::this_thread::sleep_for(std::chrono::milliseconds(3));
     * SetFinish();//mbFinished = false变色了.不进行while(1)循环了.
 
+### LoopClosing线程
+#### Tips：
+
+* [Eigen::aligned_allocator的用法](http://blog.csdn.net/rs_huangzs/article/details/50574141)
+    * 如果STL容器中的元素是Eigen库数据结构，例如这里定义一个vector容器，元素是Matrix4d ，如下所示：
+    `vector<Eigen::Matrix4d>;`  
+    * 这个错误比较难发现，因为它在编译的时候是不会提示有错误的，只会在运行的时候提示出错，错误的提示就是`Assertion failed: (reinterpret_cast<size_t>(array) & 0xf) == 0 && "this assertion is explained here:`
+    * 这是因为你在使用这个类的时候用到了new方法，这个方法是开辟一个内存，但是呢在上面的代码中没有自定义构造函数，所以在new的时候会调用默认的构造函数，调用默认的构造函数的错误在于内存的位数不对齐，所以会导致程序运行的时候出错。 解决的方法就是在类中加入宏`EIGEN_MAKE_ALIGNED_OPERATOR_NEW`,改为`vector<Eigen::Matrix4d,Eigen::aligned_allocator<Eigen::Matrix4d>>;`
+#### 步骤
+总的来说,和LocalMapping线程类似.只要LocalMapping发过来一个关键帧,他就运行.属于后台一直等待状态`while(1)`
+* mbFinished =false;
+* 检查闭环检测队列mlpLoopKeyFrameQueue中的关键帧不为空`CheckNewKeyFrames()`  
+    // Loopclosing中的关键帧是LocalMapping发送过来的，LocalMapping是Tracking中发过来的  
+    //在LocalMapping中通过InsertKeyFrame将关键帧插入闭环检测队列mlpLoopKeyFrameQueue
+    * 检测回环`DetectLoop()`
+        * 锁住`mMutexLoopQueue`,不让他进来新的关键帧.
+        * 弹出当前帧
+        * mpCurrentKF->SetNotErase();//Avoid that a keyframe can be erased while it is being process by this thread.你只是检测他是不是回环,不能把他弄没了.
+            * unique_lock<mutex> lock(mMutexConnections);
+            * mbNotErase = true;
+        * 如果距离上次闭环没多久（小于10帧），或者map中关键帧总共还没有10帧，则不进行闭环检测
+            * mpKeyFrameDB->add(mpCurrentKF);//首先加入到关键帧的数据库里
+            * mpCurrentKF->SetErase();
+            * return false;//结束闭环检测
+        * 先遍历所有共视关键帧，算个分,阈值.计算当前关键帧与每个共视关键的bow相似度得分，并得到最低得分`minScore`
+            * `const vector<KeyFrame*> vpConnectedKeyFrames = mpCurrentKF->GetVectorCovisibleKeyFrames();`
+        * 在所有关键帧中找出闭环备选帧,(大于这个最低分`minScore`的所有帧)
+            * `vector<KeyFrame*> vpCandidateKFs = mpKeyFrameDB->DetectLoopCandidates(mpCurrentKF, minScore);`
+        * 如果没有这些候选帧.
+            * 只是把当前帧加入关键帧数据库
+            * mvConsistentGroups.clear();
+            * mpCurrentKF->SetErase();
+            * return false;
+        * 如果有`vCurrentConsistentGroups`
+            * mvpEnoughConsistentCandidates.clear();// 这一步应该是清除上次最终筛选后得到的闭环帧
+    * 计算相似变换

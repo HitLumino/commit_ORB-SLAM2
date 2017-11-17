@@ -80,7 +80,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
     }
 
     // 匹配上的特征点的个数
-    const int N = mvMatches12.size();
+    const int N = mvMatches12.size();//实测N=138 139
 
     // Indices for minimum set selection
     // 新建一个容器vAllIndices，生成0到N-1的数作为特征点的索引
@@ -130,6 +130,7 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
 
     // ref是引用的功能:http://en.cppreference.com/w/cpp/utility/functional/ref
     // 计算homograpy并打分
+    ///std::ref()包装引用传参
     thread threadH(&Initializer::FindHomography,this,ref(vbMatchesInliersH), ref(SH), ref(H));
     // 计算fundamental matrix并打分
     thread threadF(&Initializer::FindFundamental,this,ref(vbMatchesInliersF), ref(SF), ref(F));

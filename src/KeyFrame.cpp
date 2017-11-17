@@ -79,8 +79,8 @@ void KeyFrame::SetPose(const cv::Mat &Tcw_)
     Tcw_.copyTo(Tcw);
     cv::Mat Rcw = Tcw.rowRange(0,3).colRange(0,3);
     cv::Mat tcw = Tcw.rowRange(0,3).col(3);
-    cv::Mat Rwc = Rcw.t();
-    Ow = -Rwc*tcw;
+    cv::Mat Rwc = Rcw.t();//转置
+    Ow = -Rwc*tcw;//相当于等式两边左乘R.t() 在世界坐标系下，光心的坐标
 
     Twc = cv::Mat::eye(4,4,Tcw.type());
     Rwc.copyTo(Twc.rowRange(0,3).colRange(0,3));
@@ -90,7 +90,7 @@ void KeyFrame::SetPose(const cv::Mat &Tcw_)
     // 因此可以看出，立体相机中两个摄像头的连线为x轴，正方向为左目相机指向右目相机
     cv::Mat center = (cv::Mat_<float>(4,1) << mHalfBaseline, 0 , 0, 1);
     // 世界坐标系下，左目相机中心到立体相机中心的向量，方向由左目相机指向立体相机中心
-    Cw = Twc*center;
+    Cw = Twc*center;//Stereo middel point在x方向上平移半个基线
 }
 
 cv::Mat KeyFrame::GetPose()
@@ -168,19 +168,19 @@ void KeyFrame::UpdateBestCovisibles()
     for(map<KeyFrame*,int>::iterator mit=mConnectedKeyFrameWeights.begin(), mend=mConnectedKeyFrameWeights.end(); mit!=mend; mit++)
        vPairs.push_back(make_pair(mit->second,mit->first));
 
-    // 按照权重进行排序
-    sort(vPairs.begin(),vPairs.end());
+    // 按照权重进行排序（从小到大）
+    sort(vPairs.begin(),vPairs.end());//（从小到大）
     list<KeyFrame*> lKFs; // keyframe
     list<int> lWs; // weight
     for(size_t i=0, iend=vPairs.size(); i<iend;i++)
     {
-        lKFs.push_front(vPairs[i].second);
+        lKFs.push_front(vPairs[i].second);//从这个pair类型里提取所需要的部分赋值，变成从大到小
         lWs.push_front(vPairs[i].first);
     }
 
     // 权重从大到小
-    mvpOrderedConnectedKeyFrames = vector<KeyFrame*>(lKFs.begin(),lKFs.end());
-    mvOrderedWeights = vector<int>(lWs.begin(), lWs.end());
+    mvpOrderedConnectedKeyFrames = vector<KeyFrame*>(lKFs.begin(),lKFs.end());//赋值
+    mvOrderedWeights = vector<int>(lWs.begin(), lWs.end());//赋值
 }
 
 /**
@@ -248,14 +248,14 @@ vector<KeyFrame*> KeyFrame::GetCovisiblesByWeight(const int &w)
 }
 
 /**
- * @brief 得到该关键帧与pKF的权重
+ * @brief 得到该关键帧的权重
  * @param  pKF 关键帧
  * @return     权重
  */
 int KeyFrame::GetWeight(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutexConnections);
-    if(mConnectedKeyFrameWeights.count(pKF))
+    if(mConnectedKeyFrameWeights.count(pKF))//在共视帧中找pKF，如果有就返回他的权重
         return mConnectedKeyFrameWeights[pKF];
     else
         return 0;
@@ -360,7 +360,7 @@ MapPoint* KeyFrame::GetMapPoint(const size_t &idx)
 /**
  * @brief 更新图的连接
  * 
- * 1. 首先获得该关键帧的所有MapPoint点，统计观测到这些3d点的每个关键与其它所有关键帧之间的共视程度
+ * 1. 首先获得该关键帧的所有MapPoint点，统计观测到这些3d点的每个关键帧与其它所有关键帧之间的共视程度
  *    对每一个找到的关键帧，建立一条边，边的权重是该关键帧与当前关键帧公共3d点的个数。
  * 2. 并且该权重必须大于一个阈值，如果没有超过该阈值的权重，那么就只保留权重最大的边（与其它关键帧的共视程度比较高）
  * 3. 对这些连接按照权重从大到小进行排序，以方便将来的处理
@@ -396,7 +396,7 @@ void KeyFrame::UpdateConnections()
             continue;
 
         // 对于每一个MapPoint点，observations记录了可以观测到该MapPoint的所有关键帧
-        map<KeyFrame*,size_t> observations = pMP->GetObservations();
+        map<KeyFrame*,size_t> observations = pMP->GetObservations();//GetObservations()返回的是一个map<KeyFrame*, size_t> 所在关键帧，和在关键帧中索引
 
         for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
         {
@@ -436,7 +436,7 @@ void KeyFrame::UpdateConnections()
             vPairs.push_back(make_pair(mit->second,mit->first));
             // 更新KFcounter中该关键帧的mConnectedKeyFrameWeights
             // 更新其它KeyFrame的mConnectedKeyFrameWeights，更新其它关键帧与当前帧的连接权重
-            (mit->first)->AddConnection(this,mit->second);
+            (mit->first)->AddConnection(this,mit->second);//this指的是当前KeyFrame
         }
     }
 
@@ -451,14 +451,14 @@ void KeyFrame::UpdateConnections()
     }
 
     // vPairs里存的都是相互共视程度比较高的关键帧和共视权重，由大到小
-    sort(vPairs.begin(),vPairs.end());
+    sort(vPairs.begin(),vPairs.end());//从小到大
     list<KeyFrame*> lKFs;
     list<int> lWs;
     for(size_t i=0; i<vPairs.size();i++)
     {
         lKFs.push_front(vPairs[i].second);
         lWs.push_front(vPairs[i].first);
-    }
+    }//从大到小
 
     //===============3==================================
     {
@@ -504,7 +504,7 @@ void KeyFrame::ChangeParent(KeyFrame *pKF)
 set<KeyFrame*> KeyFrame::GetChilds()
 {
     unique_lock<mutex> lockCon(mMutexConnections);
-    return mspChildrens;
+    return mspChildrens;//他们的节点是那个得分最高的关键帧
 }
 
 KeyFrame* KeyFrame::GetParent()
@@ -555,7 +555,10 @@ void KeyFrame::SetErase()
         SetBadFlag();
     }
 }
-
+//1. 删除与自己相连的关键帧
+//2.让与自己有联系的MapPoint删除与自己的联系
+//3. 清空自己与其它关键帧之间的联系
+//4. 如果这个关键帧有自己的孩子关键帧，告诉这些子关键帧，它们的父关键帧不行了，赶紧找新的父关键帧
 void KeyFrame::SetBadFlag()
 {   
     {

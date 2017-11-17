@@ -45,7 +45,6 @@ int main(int argc, char **argv)
     vector<string> vstrImageFilenames;
     vector<double> vTimestamps;
     LoadImages(string(argv[3]), string(argv[4]), vstrImageFilenames, vTimestamps);
-
     int nImages = vstrImageFilenames.size();
 
     if(nImages<=0)
@@ -80,9 +79,9 @@ int main(int argc, char **argv)
             return 1;
         }
 
-#ifdef COMPILEDWITHC11
+#ifdef COMPILEDWITHC11///如果此环境支持C++11,用下面这句
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-#else
+#else//如果此环境不支持支持C++11,用下面这句
         std::chrono::monotonic_clock::time_point t1 = std::chrono::monotonic_clock::now();
 #endif
 

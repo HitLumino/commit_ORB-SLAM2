@@ -63,11 +63,11 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     }
 
 
-    //Load ORB Vocabulary
+    ///Load ORB Vocabulary
     cout << endl << "Loading ORB Vocabulary. This could take a while..." << endl;
     
     mpVocabulary = new ORBVocabulary();
-    bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
+    bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);//词典名字
     if(!bVocLoad)
     {
         cerr << "Wrong path to vocabulary. " << endl;
@@ -92,33 +92,33 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     }
     cout << "Vocabulary loaded!" << endl << endl;
 */
-    //Create KeyFrame Database
+    ///Create KeyFrame Database
     mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
 
-    //Create the Map
+    ///Create the Map
     mpMap = new Map();
 
-    //Create Drawers. These are used by the Viewer
+    ///Create Drawers. These are used by the Viewer
     mpFrameDrawer = new FrameDrawer(mpMap);
     mpMapDrawer = new MapDrawer(mpMap, strSettingsFile);
 
-    //Initialize the Tracking thread
+    ///Initialize the Tracking thread
     //(it will live in the main thread of execution, the one that called this constructor)
     mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
                              mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor);
 
-    //Initialize the Local Mapping thread and launch
+    ///Initialize the Local Mapping thread and launch
     mpLocalMapper = new LocalMapping(mpMap, mSensor==MONOCULAR);
-    mptLocalMapping = new thread(&ORB_SLAM2::LocalMapping::Run,mpLocalMapper);
+    mptLocalMapping = new thread(&ORB_SLAM2::LocalMapping::Run,mpLocalMapper);///线程mptLocalMapping
 
-    //Initialize the Loop Closing thread and launch
+    ///Initialize the Loop Closing thread and launch
     mpLoopCloser = new LoopClosing(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor!=MONOCULAR);
-    mptLoopClosing = new thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
+    mptLoopClosing = new thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);///线程mptLoopClosing
 
-    //Initialize the Viewer thread and launch
+    ///Initialize the Viewer thread and launch
     mpViewer = new Viewer(this, mpFrameDrawer,mpMapDrawer,mpTracker,strSettingsFile);
     if(bUseViewer)
-        mptViewer = new thread(&Viewer::Run, mpViewer);
+        mptViewer = new thread(&Viewer::Run, mpViewer);///线程mptViewer
 
     mpTracker->SetViewer(mpViewer);
 
@@ -236,7 +236,7 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
     // Check mode change
     {
         unique_lock<mutex> lock(mMutexMode);
-        if(mbActivateLocalizationMode)
+        if(mbActivateLocalizationMode)//定位模式.初始化默认false
         {
             mpLocalMapper->RequestStop();
 
@@ -250,7 +250,7 @@ cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
             mpTracker->InformOnlyTracking(true);// 定位时，只跟踪
             mbActivateLocalizationMode = false;// 防止重复执行
         }
-        if(mbDeactivateLocalizationMode)
+        if(mbDeactivateLocalizationMode)//初始化默认false
         {
             mpTracker->InformOnlyTracking(false);
             mpLocalMapper->Release();

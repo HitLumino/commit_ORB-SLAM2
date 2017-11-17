@@ -133,10 +133,10 @@ public:
 
     // Threshold close/far points. Close points are inserted from 1 view.
     // Far points are inserted as in the monocular case from 2 views.
-    float mThDepth;
+    float mThDepth;//深度阈值
 
     // Number of KeyPoints.
-    int N; ///< KeyPoints数量
+    int N; //< KeyPoints数量
 
     // Vector of keypoints (original for visualization) and undistorted (actually used by the system).
     // In the stereo case, mvKeysUn is redundant as images must be rectified.
@@ -193,7 +193,7 @@ public:
     // Scale pyramid info.
     int mnScaleLevels;//图像提金字塔的层数
     float mfScaleFactor;//图像提金字塔的尺度因子
-    float mfLogScaleFactor;//
+    float mfLogScaleFactor;//LOG
     vector<float> mvScaleFactors;
     vector<float> mvInvScaleFactors;
     vector<float> mvLevelSigma2;
@@ -226,7 +226,7 @@ private:
     cv::Mat mRcw; ///< Rotation from world to camera
     cv::Mat mtcw; ///< Translation from world to camera
     cv::Mat mRwc; ///< Rotation from camera to world
-    cv::Mat mOw;  ///< mtwc,Translation from camera to world
+    cv::Mat mOw;  ///< 光心
 };
 
 }// namespace ORB_SLAM

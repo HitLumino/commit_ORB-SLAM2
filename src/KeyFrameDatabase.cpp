@@ -45,6 +45,9 @@ void KeyFrameDatabase::add(KeyFrame *pKF)
     unique_lock<mutex> lock(mMutex);
 
     // 为每一个word添加该KeyFrame
+    //std::map<WordId, WordValue>
+    //pKF->mBowVec:  Vector of words to represent images
+    //std::vector<list<KeyFrame*> > mvInvertedFile; ///< 倒排索引，mvInvertedFile[i]表示包含了第i个word id的所有关键帧
     for(DBoW2::BowVector::const_iterator vit= pKF->mBowVec.begin(), vend=pKF->mBowVec.end(); vit!=vend; vit++)
         mvInvertedFile[vit->first].push_back(pKF);
 }
@@ -62,7 +65,7 @@ void KeyFrameDatabase::erase(KeyFrame* pKF)
     for(DBoW2::BowVector::const_iterator vit=pKF->mBowVec.begin(), vend=pKF->mBowVec.end(); vit!=vend; vit++)
     {
         // List of keyframes that share the word
-        list<KeyFrame*> &lKFs = mvInvertedFile[vit->first];
+        list<KeyFrame*> &lKFs = mvInvertedFile[vit->first];// vit->first 单词索引  mvInvertedFile[i]表示包含了第i个word id的所有关键帧
 
         for(list<KeyFrame*>::iterator lit=lKFs.begin(), lend= lKFs.end(); lit!=lend; lit++)
         {
@@ -117,7 +120,7 @@ vector<KeyFrame*> KeyFrameDatabase::DetectLoopCandidates(KeyFrame* pKF, float mi
                 if(pKFi->mnLoopQuery!=pKF->mnId)// pKFi还没有标记为pKF的候选帧
                 {
                     pKFi->mnLoopWords=0;
-                    if(!spConnectedKeyFrames.count(pKFi))// 与pKF局部链接的关键帧不进入闭环候选帧
+                    if(!spConnectedKeyFrames.count(pKFi))// pKFi不能是他的共视帧
                     {
                         pKFi->mnLoopQuery=pKF->mnId;// pKFi标记为pKF的候选帧，之后直接跳过判断
                         lKFsSharingWords.push_back(pKFi);

@@ -33,7 +33,7 @@
 namespace ORB_SLAM2
 {
 
-
+///初始化,各种赋值
 Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> &vpMatched12, const bool bFixScale):
     mnIterations(0), mnBestInliers(0), mbFixScale(bFixScale)
 {
@@ -42,7 +42,7 @@ Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> 
 
     vector<MapPoint*> vpKeyFrameMP1 = pKF1->GetMapPointMatches();
 
-    mN1 = vpMatched12.size();
+    mN1 = vpMatched12.size();//两个关键帧匹配的点数
 
     mvpMapPoints1.reserve(mN1);
     mvpMapPoints2.reserve(mN1);
@@ -59,14 +59,14 @@ Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> 
     mvAllIndices.reserve(mN1);
 
     size_t idx=0;
-    // mN1为pKF2特征点的个数
+
     for(int i1=0; i1<mN1; i1++)
     {
-        // 如果该特征点在pKF1中有匹配
+        // 在pkf2中pkf2(i1)
         if(vpMatched12[i1])
         {
             // pMP1和pMP2是匹配的MapPoint
-            MapPoint* pMP1 = vpKeyFrameMP1[i1];
+            MapPoint* pMP1 = vpKeyFrameMP1[i1];//vpKeyFrameMP1 = pKF1->GetMapPointMatches();
             MapPoint* pMP2 = vpMatched12[i1];
 
             if(!pMP1)
@@ -111,7 +111,7 @@ Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> 
     mK1 = pKF1->mK;
     mK2 = pKF2->mK;
 
-    FromCameraToImage(mvX3Dc1,mvP1im1,mK1);
+    FromCameraToImage(mvX3Dc1,mvP1im1,mK1);//mvP1im1像素坐标
     FromCameraToImage(mvX3Dc2,mvP2im2,mK2);
 
     SetRansacParameters();
@@ -128,12 +128,12 @@ void Sim3Solver::SetRansacParameters(double probability, int minInliers, int max
     mvbInliersi.resize(N);
 
     // Adjust Parameters according to number of correspondences
-    float epsilon = (float)mRansacMinInliers/N;
+    float epsilon = (float)mRansacMinInliers/N;    //  20/n
 
     // Set RANSAC iterations according to probability, epsilon, and max iterations
     int nIterations;
 
-    if(mRansacMinInliers==N)
+    if(mRansacMinInliers==N)//如果说你要的最少内点和匹配点一样的话,只需要迭代一次,显而易见就可以出结果了
         nIterations=1;
     else
         nIterations = ceil(log(1-mRansacProb)/log(1-pow(epsilon,3)));
@@ -144,13 +144,15 @@ void Sim3Solver::SetRansacParameters(double probability, int minInliers, int max
 }
 
 // Ransac求解mvX3Dc1和mvX3Dc2之间Sim3，函数返回mvX3Dc2到mvX3Dc1的Sim3变换
+//指定迭代次数nIterations
+//mBestT12
 cv::Mat Sim3Solver::iterate(int nIterations, bool &bNoMore, vector<bool> &vbInliers, int &nInliers)
 {
     bNoMore = false;
     vbInliers = vector<bool>(mN1,false);
     nInliers=0;
 
-    if(N<mRansacMinInliers)
+    if(N<mRansacMinInliers)//如果匹配点<迭代后的内点数,就别迭代了.
     {
         bNoMore = true;
         return cv::Mat();
@@ -158,22 +160,22 @@ cv::Mat Sim3Solver::iterate(int nIterations, bool &bNoMore, vector<bool> &vbInli
 
     vector<size_t> vAvailableIndices;
 
-    cv::Mat P3Dc1i(3,3,CV_32F);
+    cv::Mat P3Dc1i(3,3,CV_32F);//3x3矩阵,放了3组坐标
     cv::Mat P3Dc2i(3,3,CV_32F);
 
-    int nCurrentIterations = 0;
+    int nCurrentIterations = 0;//当前迭代次数
     while(mnIterations<mRansacMaxIts && nCurrentIterations<nIterations)
     {
         nCurrentIterations++;// 这个函数中迭代的次数
         mnIterations++;// 总的迭代次数，默认为最大为300
 
-        vAvailableIndices = mvAllIndices;
+        vAvailableIndices = mvAllIndices;//0--mN1
 
         // Get min set of points
         // 步骤1：任意取三组点算Sim矩阵
         for(short i = 0; i < 3; ++i)
         {
-            int randi = DUtils::Random::RandomInt(0, vAvailableIndices.size()-1);
+            int randi = DUtils::Random::RandomInt(0, vAvailableIndices.size()-1);//随机数(0---n-1)
 
             int idx = vAvailableIndices[randi];
 
@@ -181,11 +183,13 @@ cv::Mat Sim3Solver::iterate(int nIterations, bool &bNoMore, vector<bool> &vbInli
             // x1 x2 x3 ...
             // y1 y2 y3 ...
             // z1 z2 z3 ...
-            mvX3Dc1[idx].copyTo(P3Dc1i.col(i));
-            mvX3Dc2[idx].copyTo(P3Dc2i.col(i));
+            mvX3Dc1[idx].copyTo(P3Dc1i.col(i));//相机坐标系1 下的坐标
+            mvX3Dc2[idx].copyTo(P3Dc2i.col(i));//相机坐标系2 下的坐标
 
+            //这两句还是为了增加随机性
             vAvailableIndices[randi] = vAvailableIndices.back();
-            vAvailableIndices.pop_back();
+            vAvailableIndices.pop_back();//保证选择的点不重复
+
         }
 
         // 步骤2：根据两组匹配的3D点，计算之间的Sim3变换
@@ -226,6 +230,7 @@ cv::Mat Sim3Solver::find(vector<bool> &vbInliers12, int &nInliers)
     return iterate(mRansacMaxIts,bFlag,vbInliers12,nInliers);
 }
 
+///算矩阵的质心
 void Sim3Solver::ComputeCentroid(cv::Mat &P, cv::Mat &Pr, cv::Mat &C)
 {
     // 这两句可以使用CV_REDUCE_AVG选项来搞定
@@ -290,7 +295,7 @@ void Sim3Solver::ComputeSim3(cv::Mat &P1, cv::Mat &P2)
 
     cv::eigen(N,eval,evec); //evec[0] is the quaternion of the desired rotation
 
-    // N矩阵最大特征值（第一个特征值）对应特征向量就是要求的四元数死（q0 q1 q2 q3）
+    // N矩阵最大特征值（第一个特征值）对应特征向量就是要求的四元数（q0 q1 q2 q3）
     // 将(q1 q2 q3)放入vec行向量，vec就是四元数旋转轴乘以sin(ang/2)
     cv::Mat vec(1,3,evec.type());
     (evec.row(0).colRange(1,4)).copyTo(vec); //extract imaginary part of the quaternion (sin*axis)
@@ -302,6 +307,7 @@ void Sim3Solver::ComputeSim3(cv::Mat &P1, cv::Mat &P2)
 
     mR12i.create(3,3,P1.type());
 
+    ///mR12i 旋转矩阵
     cv::Rodrigues(vec,mR12i); // computes the rotation matrix from angle-axis
 
     // Step 5: Rotate set 2
@@ -403,6 +409,7 @@ float Sim3Solver::GetEstimatedScale()
     return mBestScale;
 }
 
+///世界坐标3D到像素坐标(u,v)
 void Sim3Solver::Project(const vector<cv::Mat> &vP3Dw, vector<cv::Mat> &vP2D, cv::Mat Tcw, cv::Mat K)
 {
     cv::Mat Rcw = Tcw.rowRange(0,3).colRange(0,3);
@@ -425,7 +432,7 @@ void Sim3Solver::Project(const vector<cv::Mat> &vP3Dw, vector<cv::Mat> &vP2D, cv
         vP2D.push_back((cv::Mat_<float>(2,1) << fx*x+cx, fy*y+cy));
     }
 }
-
+///相机坐标系3D到像素坐标(u,v)
 void Sim3Solver::FromCameraToImage(const vector<cv::Mat> &vP3Dc, vector<cv::Mat> &vP2D, cv::Mat K)
 {
     const float &fx = K.at<float>(0,0);

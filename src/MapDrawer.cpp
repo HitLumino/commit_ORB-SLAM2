@@ -36,6 +36,7 @@ MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
     mKeyFrameLineWidth = fSettings["Viewer.KeyFrameLineWidth"];
     mGraphLineWidth = fSettings["Viewer.GraphLineWidth"];
     mPointSize = fSettings["Viewer.PointSize"];
+   // mPointSize = 3;
     mCameraSize = fSettings["Viewer.CameraSize"];
     mCameraLineWidth = fSettings["Viewer.CameraLineWidth"];
 
@@ -46,7 +47,7 @@ void MapDrawer::DrawMapPoints()
 {
     //取出所有的地图点
     const vector<MapPoint*> &vpMPs = mpMap->GetAllMapPoints();
-    //取出mvpReferenceMapPoints，也即局部地图d点
+    //取出mvpReferenceMapPoints，也即局部地图点
     const vector<MapPoint*> &vpRefMPs = mpMap->GetReferenceMapPoints();
 
     //将vpRefMPs从vector容器类型转化为set容器类型，便于使用set::count快速统计

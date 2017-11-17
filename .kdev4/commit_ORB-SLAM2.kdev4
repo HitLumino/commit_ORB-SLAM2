@@ -1,0 +1,40 @@
+[Buildset]
+BuildItems=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x01\x00\x00\x00\x0b\x00\x00\x00\x00\x01\x00\x00\x00 \x00c\x00o\x00m\x00m\x00i\x00t\x00_\x00O\x00R\x00B\x00-\x00S\x00L\x00A\x00M\x002)
+
+[CMake]
+Build Directory Count=1
+Current Build Directory Index-Host System=0
+
+[CMake][CMake Build Directory 0]
+Build Directory Path=/home/lumino/hitlumino/commit_ORB-SLAM2/kdev
+Build Type=Debug
+CMake Binary=/usr/bin/cmake
+CMake Executable=/usr/bin/cmake
+Environment Profile=
+Extra Arguments=/home/lumino/hitlumino/ORB_SLAM2/Vocabulary/ORBvoc.txt /home/lumino/hitlumino/ORB_SLAM2/Examples/Monocular/EuRoC.yaml  /home/lumino/Downloads/mav0/cam0/data  /home/lumino/hitlumino/ORB_SLAM2/Examples/Monocular/EuRoC_TimeStamps/MH01.txt
+Install Directory=/usr/local
+Runtime=Host System
+
+[Launch]
+Launch Configurations=Launch Configuration 0
+
+[Launch][Launch Configuration 0]
+Configured Launch Modes=execute
+Configured Launchers=nativeAppLauncher
+Name=New Compiled Binary Launcher
+Type=Native Application
+
+[Launch][Launch Configuration 0][Data]
+Arguments=/home/lumino/hitlumino/ORB_SLAM2/Vocabulary/ORBvoc.txt /home/lumino/hitlumino/ORB_SLAM2/Examples/Monocular/EuRoC.yaml  /home/lumino/Downloads/mav0/cam0/data  /home/lumino/hitlumino/ORB_SLAM2/Examples/Monocular/EuRoC_TimeStamps/MH01.txt
+Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x00)
+Dependency Action=Nothing
+EnvironmentGroup=
+Executable=file:///home/lumino/hitlumino/commit_ORB-SLAM2
+External Terminal=konsole --noclose --workdir %workdir -e %exe
+Project Target=commit_ORB-SLAM2,edit_cache
+Use External Terminal=false
+Working Directory=
+isExecutable=true
+
+[Project]
+VersionControlSupport=kdevgit
