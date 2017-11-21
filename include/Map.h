@@ -41,14 +41,20 @@ public:
     Map();
 
     void AddKeyFrame(KeyFrame* pKF);
+    void AddKeyFrameForBA(const std::vector<KeyFrame*> &pKFs);///新添加for localba
+    void AddFixedKeyFrameForBA(const std::vector<KeyFrame*> &pKFs);
     void AddMapPoint(MapPoint* pMP);
     void EraseMapPoint(MapPoint* pMP);
     void EraseKeyFrame(KeyFrame* pKF);
-    void SetReferenceMapPoints(const std::vector<MapPoint*> &vpMPs);
 
+    void SetReferenceMapPoints(const std::vector<MapPoint*> &vpMPs);
+    void SetReferenceLocalKFs(const vector<KeyFrame *> &vpKFs);///新添加 局部关键帧
+    void SetParentKF(KeyFrame* pKF);
+    KeyFrame* GetParentKFs();
     std::vector<KeyFrame*> GetAllKeyFrames();
     std::vector<MapPoint*> GetAllMapPoints();
     std::vector<MapPoint*> GetReferenceMapPoints();
+    std::vector<KeyFrame*> GetLocalKeyFrames();
 
     long unsigned int MapPointsInMap();
     long unsigned  KeyFramesInMap();
@@ -59,6 +65,7 @@ public:
 
     vector<KeyFrame*> mvpKeyFrameOrigins;
 
+
     std::mutex mMutexMapUpdate;
 
     // This avoid that two points are created simultaneously in separate threads (id conflict)
@@ -67,8 +74,12 @@ public:
 protected:
     std::set<MapPoint*> mspMapPoints; ///< MapPoints
     std::set<KeyFrame*> mspKeyFrames; ///< Keyframs
-
+    std::vector<KeyFrame*> mvLocalKeyFrames;///新添加 局部关键帧
+    KeyFrame* cur_ParentKF;
     std::vector<MapPoint*> mvpReferenceMapPoints;
+    std::vector<KeyFrame*> mvLocalBAKeyFrames;///自己添加(用于LocalBA的关键帧)为了viewer
+    std::vector<KeyFrame*> mvLocalFixedFrames;///自己添加(用于参与LocalBA但不优化的关键帧)为了viewer
+
 
     long unsigned int mnMaxKFid;
 

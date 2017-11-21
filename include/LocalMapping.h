@@ -101,6 +101,7 @@ protected:
 
     Map* mpMap;
 
+
     LoopClosing* mpLoopCloser;
     Tracking* mpTracker;
 

@@ -41,6 +41,21 @@ void Map::AddKeyFrame(KeyFrame *pKF)
         mnMaxKFid=pKF->mnId;//更新地图最新关键帧的id
 }
 
+//////////新添加的keyframes for局部BA地图2017.11.20
+void Map::AddKeyFrameForBA(const std::vector<KeyFrame*> &pKFs)
+{
+    unique_lock<mutex> lock(mMutexMap);//锁住mMutexMap这个互斥元，如果已经被其他unique_lock锁住，暂时阻塞
+    mvLocalBAKeyFrames.clear();//清空上一次缓存
+    mvLocalBAKeyFrames=pKFs;
+}
+//////////新添加的keyframes for局部BA地图(参与但是不优化)2017.11.20
+void Map::AddFixedKeyFrameForBA(const std::vector<KeyFrame*> &pKFs)
+{
+    unique_lock<mutex> lock(mMutexMap);//锁住mMutexMap这个互斥元，如果已经被其他unique_lock锁住，暂时阻塞
+    mvLocalFixedFrames.clear();//清空上一次缓存
+    mvLocalFixedFrames=pKFs;
+}
+
 /**
  * @brief Insert MapPoint in the map
  * @param pMP MapPoint
@@ -50,6 +65,7 @@ void Map::AddMapPoint(MapPoint *pMP)
     unique_lock<mutex> lock(mMutexMap);//锁住mMutexMap
     mspMapPoints.insert(pMP);
 }
+
 
 /**
  * @brief Erase MapPoint from the map
@@ -78,7 +94,7 @@ void Map::EraseKeyFrame(KeyFrame *pKF)
 }
 
 /**
- * @brief 设置参考MapPoints，将用于DrawMapPoints函数画图
+ * @brief 设置参考MapPoints
  * @param vpMPs Local MapPoints
  */
 void Map::SetReferenceMapPoints(const vector<MapPoint *> &vpMPs)
@@ -86,11 +102,41 @@ void Map::SetReferenceMapPoints(const vector<MapPoint *> &vpMPs)
     unique_lock<mutex> lock(mMutexMap);
     mvpReferenceMapPoints = vpMPs;
 }
+///自己添加
+void Map::SetReferenceLocalKFs(const vector<KeyFrame *> &vpKFs)
+{
+    unique_lock<mutex> lock(mMutexMap);
+    mvLocalKeyFrames = vpKFs;
+}
+
+void Map::SetParentKF(KeyFrame* pKF)
+{
+    unique_lock<mutex> lock(mMutexMap);
+    cur_ParentKF=pKF;
+}
+
+KeyFrame* Map::GetParentKFs()
+{
+    unique_lock<mutex> lock(mMutexMap);
+    return cur_ParentKF;
+}
 
 vector<KeyFrame*> Map::GetAllKeyFrames()
 {
     unique_lock<mutex> lock(mMutexMap);
     return vector<KeyFrame*>(mspKeyFrames.begin(),mspKeyFrames.end());
+}
+///自己添加2017.11.20
+vector<KeyFrame*> Map::GetLocalKeyFrames()
+{
+    unique_lock<mutex> lock(mMutexMap);
+    return mvLocalKeyFrames;
+}
+
+long unsigned int Map::GetMaxKFid()
+{
+    unique_lock<mutex> lock(mMutexMap);
+    return mnMaxKFid;
 }
 
 vector<MapPoint*> Map::GetAllMapPoints()
@@ -115,12 +161,6 @@ vector<MapPoint*> Map::GetReferenceMapPoints()
 {
     unique_lock<mutex> lock(mMutexMap);
     return mvpReferenceMapPoints;
-}
-
-long unsigned int Map::GetMaxKFid()
-{
-    unique_lock<mutex> lock(mMutexMap);
-    return mnMaxKFid;
 }
 
 void Map::clear()

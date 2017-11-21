@@ -532,6 +532,8 @@ set<KeyFrame*> KeyFrame::GetLoopEdges()
     return mspLoopEdges;
 }
 
+
+
 void KeyFrame::SetNotErase()
 {
     unique_lock<mutex> lock(mMutexConnections);

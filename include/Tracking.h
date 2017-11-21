@@ -139,6 +139,7 @@ protected:
     void UpdateLocalPoints();
     void UpdateLocalKeyFrames();
 
+
     bool TrackLocalMap();
     void SearchLocalPoints();
 
@@ -173,6 +174,8 @@ protected:
 
     //Local Map
     KeyFrame* mpReferenceKF;// 当前关键帧就是参考帧
+    KeyFrame* ParentKF;//当前帧的父亲帧
+    std::vector<KeyFrame*> mvpChildKeyFrames;//当前帧的孩子帧
     std::vector<KeyFrame*> mvpLocalKeyFrames;
     std::vector<MapPoint*> mvpLocalMapPoints;
     

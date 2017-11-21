@@ -110,7 +110,8 @@ int main(int argc, char **argv)
     }
 
     // Stop all threads
-    SLAM.Shutdown();
+//    SLAM.Shutdown();
+    std::this_thread::sleep_for(std::chrono::seconds(500));
 
     // Tracking time statistics
     sort(vTimesTrack.begin(),vTimesTrack.end());

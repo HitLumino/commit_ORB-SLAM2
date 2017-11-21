@@ -60,22 +60,27 @@ void Viewer::Run()
     pangolin::CreateWindowAndBind("ORB-SLAM2: Map Viewer",1024,768);
 
     // 3D Mouse handler requires depth testing to be enabled
-    // 启动深度测试，OpenGL只绘制最前面的一层，绘制时检查当前像素前面是否有别的像素，如果别的像素挡住了它，那它就不会绘制
+    /// 启动深度测试，OpenGL只绘制最前面的一层，绘制时检查当前像素前面是否有别的像素，如果别的像素挡住了它，那它就不会绘制
     glEnable(GL_DEPTH_TEST);
 
     // Issue specific OpenGl we might need
     // 在OpenGL中使用颜色混合
     glEnable(GL_BLEND);
-    // 选择混合选项
+    // 基于源像素Alpha通道值的半透明混合函数
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // 新建按钮和选择框，第一个参数为按钮的名字，第二个为默认状态，第三个为是否有选择框
-    pangolin::CreatePanel("menu").SetBounds(0.0,1.0,0.0,pangolin::Attach::Pix(175));
+    //! Set bounds for the View using mixed fractional / pixel coordinates (OpenGl view coordinates)
+    //! View& SetBounds(Attach bottom, Attach top, Attach left, Attach right);底/上/左/右
+    pangolin::CreatePanel("menu").SetBounds(0.0,1.0,0.0,pangolin::Attach::Pix(200));/// Specify absolute position from leftmost / bottom-most edge.
     pangolin::Var<bool> menuFollowCamera("menu.Follow Camera",true,true);
     pangolin::Var<bool> menuShowPoints("menu.Show Points",true,true);
     pangolin::Var<bool> menuShowKeyFrames("menu.Show KeyFrames",true,true);
     pangolin::Var<bool> menuShowGraph("menu.Show Graph",true,true);
     pangolin::Var<bool> menuLocalizationMode("menu.Localization Mode",false,true);
+    pangolin::Var<bool> menuShowLocalKeyFrames("menu.Show LocalKeyFrames",false,true);
+    pangolin::Var<bool> menuShowConnectedKeyFrames("menu.Show ConnectedKeyFrame",false,true);
+    pangolin::Var<bool> menuShowProject("menu.Show Project",false,true);
     pangolin::Var<bool> menuReset("menu.Reset",false,false);
 
     // Define Camera Render Object (for view / scene browsing)
@@ -89,13 +94,13 @@ void Viewer::Run()
                 );
 
     // Add named OpenGL viewport to window and provide 3D Handler
-    // 定义显示面板大小，orbslam中有左右两个面板，昨天显示一些按钮，右边显示图形
-    // 前两个参数（0.0, 1.0）表明宽度和面板纵向宽度和窗口大小相同
-    // 中间两个参数（pangolin::Attach::Pix(175), 1.0）表明右边所有部分用于显示图形
+    // 定义显示面板大小，orbslam中有左右两个面板，左边显示一些按钮，右边显示图形
+    // 前两个参数（0.0, 1.0）表明高度和面板纵向宽度和窗口大小相同
+    /// 中间两个参数（pangolin::Attach::Pix(175), 1.0）表明右边所有部分用于显示图形
     // 最后一个参数（-1024.0f/768.0f）为显示长宽比
     pangolin::View& d_cam = pangolin::CreateDisplay()
-            .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0, -1024.0f/768.0f)
-            .SetHandler(new pangolin::Handler3D(s_cam));
+            .SetBounds(0.0, 1.0, pangolin::Attach::Pix(200), 1.0, -1024.0f/768.0f)
+            .SetHandler(new pangolin::Handler3D(s_cam));/// Create Interactive View in window
 
     pangolin::OpenGlMatrix Twc;
     Twc.SetIdentity();
@@ -107,13 +112,16 @@ void Viewer::Run()
 
     while(1)
     {
-        // 清除缓冲区中的当前可写的颜色缓冲 和 深度缓冲
+        // Clear screen and activate view to render into
+        //在OpenGL中，默认是没有开启深度检测的，也就是说，后绘制的物体覆盖先绘制的物体(颜色缓冲区中，先绘制的物体 被 后绘制的物体 覆盖)。
+        //颜色缓冲区中，先绘制的物体 被 后绘制的物体 覆盖
+        //http://blog.csdn.net/huutu/article/details/53015669
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // 步骤1：得到最新的相机位姿
         mpMapDrawer->GetCurrentOpenGLCameraMatrix(Twc);
 
-        // 步骤2：根据相机的位姿调整视角
+        /// 步骤2：根据相机的位姿调整视角
         // menuFollowCamera为按钮的状态，bFollow为真实的状态
         if(menuFollowCamera && bFollow)
         {
@@ -144,12 +152,25 @@ void Viewer::Run()
         d_cam.Activate(s_cam);
         // 步骤3：绘制地图和图像
         // 设置为白色，glClearColor(red, green, blue, alpha），数值范围(0, 1)
-        glClearColor(1.0f,1.0f,1.0f,1.0f);
+        glClearColor(1.0f,1.0f,1.0f,0.6f);
         mpMapDrawer->DrawCurrentCamera(Twc);
         if(menuShowKeyFrames || menuShowGraph)
             mpMapDrawer->DrawKeyFrames(menuShowKeyFrames,menuShowGraph);
         if(menuShowPoints)
             mpMapDrawer->DrawMapPoints();
+        if(menuShowProject)
+        {
+            mpMapDrawer->DrawProject();
+        }
+        //补充菜单
+//        if(menuShowConnectedKeyFrames)
+//            mpMapDrawer->DrawConnectedKeyFrames();
+        if(menuShowLocalKeyFrames)
+        {
+            mpMapDrawer->DrawLocalKeyframes();
+            mpMapDrawer->DrawCurrentParenceKeyframes();
+        }
+
 
         pangolin::FinishFrame();
 

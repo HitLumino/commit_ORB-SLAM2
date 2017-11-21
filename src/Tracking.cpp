@@ -699,6 +699,7 @@ void Tracking::StereoInitialization()
         mpLastKeyFrame = pKFini;
 
         mvpLocalKeyFrames.push_back(pKFini);
+
         mvpLocalMapPoints=mpMap->GetAllMapPoints();
         mpReferenceKF = pKFini;
         mCurrentFrame.mpReferenceKF = pKFini;
@@ -706,10 +707,9 @@ void Tracking::StereoInitialization()
         // 把当前（最新的）局部MapPoints作为ReferenceMapPoints
         // ReferenceMapPoints是DrawMapPoints函数画图的时候用的
         mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
-
+        mpMap->SetReferenceLocalKFs(mvpLocalKeyFrames);///新添加 局部关键帧
         mpMap->mvpKeyFrameOrigins.push_back(pKFini);
-
-        mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
+        mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);///画图
 
         mState=OK;
     }
@@ -947,7 +947,7 @@ void Tracking::CreateInitialMapMonocular()
     mLastFrame = Frame(mCurrentFrame);
 
     mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
-
+    mpMap->SetReferenceLocalKFs(mvpLocalKeyFrames);///新添加,本来只有局部地图点,地图里没有局部关键帧
     mpMapDrawer->SetCurrentCameraPose(pKFcur->GetPose());
 
     mpMap->mvpKeyFrameOrigins.push_back(pKFini);
@@ -1639,6 +1639,7 @@ void Tracking::UpdateLocalKeyFrames()
 {
     // Each map point vote for the keyframes in which it has been observed
     // 步骤1：遍历当前帧的MapPoints，记录所有能观测到当前帧MapPoints的关键帧
+
     map<KeyFrame*,int> keyframeCounter;
     for(int i=0; i<mCurrentFrame.N; i++)
     {
@@ -1739,6 +1740,7 @@ void Tracking::UpdateLocalKeyFrames()
 
         // 策略2.3:自己的父关键帧
         KeyFrame* pParent = pKF->GetParent();
+        KeyFrame* ParentKF =pKF->GetParent();///画图
         if(pParent)
         {
             // mnTrackReferenceForFrame防止重复添加局部关键帧
@@ -1749,6 +1751,8 @@ void Tracking::UpdateLocalKeyFrames()
                 break;
             }
         }
+        mpMap->SetParentKF(ParentKF);
+        mpMap->SetReferenceLocalKFs(mvpLocalKeyFrames);///新添加,本来只有局部地图点,地图里没有局部关键帧
 
     }
 
