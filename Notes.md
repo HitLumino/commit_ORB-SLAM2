@@ -386,9 +386,9 @@ std::vector<float> Converter::toQuaternion(const cv::Mat &M)
     * 同时对左右目提特征（两个线程）
     * 不需要对特征点进行矫正（双目特有）
     * 计算双目间的匹配, 匹配成功的特征点会计算其深度
-        * 为左图的每一个特征点在右图中找到匹配点 \n
-        * 根据基线(有冗余范围)上描述子距离找到匹配, 再进行SAD精确定位 \n
-        * 最后对所有SAD的值进行排序, 剔除SAD值较大的匹配对，然后利用抛物线拟合得到亚像素精度的匹配 \n
+        * 为左图的每一个特征点在右图中找到匹配点 
+        * 根据基线(有冗余范围)上描述子距离找到匹配, 再进行SAD精确定位 
+        * 最后对所有SAD的值进行排序, 剔除SAD值较大的匹配对，然后利用抛物线拟合得到亚像素精度的匹配 
         * 匹配成功后会更新 mvuRight(ur) 和 mvDepth(Z)
 ```c
 Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
@@ -427,6 +427,7 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     if(mvKeys.empty())
         return;
     // Undistort特征点，这里没有对双目进行校正，因为要求输入的图像已经进行极线校正
+    //https://docs.opencv.org/2.4/modules/imgproc/doc/geometric_transformations.html?highlight=undistortpoints#undistortpoints
     UndistortKeyPoints();
 
     // 计算双目间的匹配, 匹配成功的特征点会计算其深度
