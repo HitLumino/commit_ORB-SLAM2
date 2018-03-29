@@ -128,7 +128,7 @@ int main(int argc, char **argv)
     cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
-    // SLAM.SaveTrajectoryKITTI("CameraTrajectory.txt");
+    SLAM.SaveTrajectoryKITTI("CameraTrajectory.txt");
 
     return 0;
 }
@@ -145,7 +145,7 @@ Rectify::Rectify(const string& config)
         throw;
     }
 
-    cv::Mat K_l, K_r, P_l, P_r, R_l, R_r, D_l, D_r;
+    cv::Mat K_l, K_r, P_l, P_r, R_l, R_r, D_l, D_r,R,T;
     fsSettings["LEFT.K"] >> K_l;
     fsSettings["RIGHT.K"] >> K_r;
 
@@ -158,10 +158,15 @@ Rectify::Rectify(const string& config)
     fsSettings["LEFT.D"] >> D_l;
     fsSettings["RIGHT.D"] >> D_r;
 
+    fsSettings["cam2to1.R"] >> R;
+    fsSettings["cam2to1.T"] >> T;
+
     int rows_l = fsSettings["LEFT.height"];
     int cols_l = fsSettings["LEFT.width"];
     int rows_r = fsSettings["RIGHT.height"];
     int cols_r = fsSettings["RIGHT.width"];
+    cv::Mat R1, R2, P1, P2, Q;
+   // cv::Size imagesize =cv::Size(cols_l,rows_l);
 
     if(K_l.empty() || K_r.empty() || P_l.empty() || P_r.empty() || R_l.empty() || R_r.empty() || D_l.empty() || D_r.empty() ||
             rows_l==0 || rows_r==0 || cols_l==0 || cols_r==0)
@@ -170,7 +175,14 @@ Rectify::Rectify(const string& config)
         //return -1;
         throw;
     }
-
+//测试
+    /*
+    cv::stereoRectify(K_l,D_l,K_r,D_r,imagesize,R,T,R1,R2,P1,P2,Q,CV_CALIB_ZERO_DISPARITY,-1,cv::Size(cols_l,rows_l),0,0);
+    cout<<"R1:   "<<R1<<endl;
+    cout<<"R2:   "<<R2<<endl;
+    cout<<"P1:   "<<P1<<endl;
+    cout<<"P2:   "<<P2<<endl;
+    */
     cv::initUndistortRectifyMap(K_l,D_l,R_l,P_l.rowRange(0,3).colRange(0,3),cv::Size(cols_l,rows_l),CV_32F,M1l,M2l);
     cv::initUndistortRectifyMap(K_r,D_r,R_r,P_r.rowRange(0,3).colRange(0,3),cv::Size(cols_r,rows_r),CV_32F,M1r,M2r);
 }
