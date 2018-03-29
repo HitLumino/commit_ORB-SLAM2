@@ -100,7 +100,7 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
 
     if(mvKeys.empty())
         return;
-    // Undistort特征点，这里没有对双目进行校正，因为要求输入的图像已经进行极线校正
+    /// Undistort特征点，这里没有对双目进行校正，因为要求输入的图像已经进行极线校正
     //这是UndistortKeyPoints()对畸变参数的检测，如果为0，就直接赋值。
     /*if(mDistCoef.at<float>(0)==0.0)
     {
@@ -486,7 +486,7 @@ void Frame::UndistortKeyPoints()
     }
 
     // Fill matrix with points
-    // N为提取的特征点数量，将N个特征点保存在N*2的mat中
+    // N为提取的特征点数量，将N个特征点的坐标保存在N*2的mat中
     cv::Mat mat(N,2,CV_32F);
     for(int i=0; i<N; i++)
     {
@@ -497,8 +497,10 @@ void Frame::UndistortKeyPoints()
     // Undistort points
     // 调整mat的通道为2，矩阵的行列形状不变
     mat=mat.reshape(2);
-    cv::undistortPoints(mat,//必须是2通道的
-        mat,//输出
+
+//https://docs.opencv.org/2.4/modules/imgproc/doc/geometric_transformations.html?highlight=undistortpoints#undistortpoints
+    cv::undistortPoints(mat,                  //必须是2通道的  输入点
+        mat,//输出点
         mK,//相机内参
         mDistCoef,//畸变参数
         cv::Mat(),

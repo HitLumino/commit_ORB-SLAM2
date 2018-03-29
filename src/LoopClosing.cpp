@@ -40,7 +40,7 @@ LoopClosing::LoopClosing(Map *pMap, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, 
     mpKeyFrameDB(pDB), mpORBVocabulary(pVoc), mpMatchedKF(NULL), mLastLoopKFid(0), mbRunningGBA(false), mbFinishedGBA(true),
     mbStopGBA(false), mpThreadGBA(NULL), mbFixScale(bFixScale), mnFullBAIdx(0)
 {
-    mnCovisibilityConsistencyTh = 3;
+    mnCovisibilityConsistencyTh = 3;///连续帧的阈值是3,也就是在检测是否为闭环时,需要连续3帧都符合.
 }
 
 void LoopClosing::SetTracker(Tracking *pTracker)

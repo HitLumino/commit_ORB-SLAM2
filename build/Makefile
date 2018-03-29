@@ -111,6 +111,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named zed_orb
+
+# Build rule for target.
+zed_orb: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 zed_orb
+.PHONY : zed_orb
+
+# fast build rule for target.
+zed_orb/fast:
+	$(MAKE) -f CMakeFiles/zed_orb.dir/build.make CMakeFiles/zed_orb.dir/build
+.PHONY : zed_orb/fast
+
+#=============================================================================
 # Target rules for targets named mono_euroc
 
 # Build rule for target.
@@ -362,6 +375,33 @@ Examples/Stereo/stereo_kitti.s: Examples/Stereo/stereo_kitti.cpp.s
 Examples/Stereo/stereo_kitti.cpp.s:
 	$(MAKE) -f CMakeFiles/stereo_kitti.dir/build.make CMakeFiles/stereo_kitti.dir/Examples/Stereo/stereo_kitti.cpp.s
 .PHONY : Examples/Stereo/stereo_kitti.cpp.s
+
+Examples/Zed/run_zed.o: Examples/Zed/run_zed.cpp.o
+
+.PHONY : Examples/Zed/run_zed.o
+
+# target to build an object file
+Examples/Zed/run_zed.cpp.o:
+	$(MAKE) -f CMakeFiles/zed_orb.dir/build.make CMakeFiles/zed_orb.dir/Examples/Zed/run_zed.cpp.o
+.PHONY : Examples/Zed/run_zed.cpp.o
+
+Examples/Zed/run_zed.i: Examples/Zed/run_zed.cpp.i
+
+.PHONY : Examples/Zed/run_zed.i
+
+# target to preprocess a source file
+Examples/Zed/run_zed.cpp.i:
+	$(MAKE) -f CMakeFiles/zed_orb.dir/build.make CMakeFiles/zed_orb.dir/Examples/Zed/run_zed.cpp.i
+.PHONY : Examples/Zed/run_zed.cpp.i
+
+Examples/Zed/run_zed.s: Examples/Zed/run_zed.cpp.s
+
+.PHONY : Examples/Zed/run_zed.s
+
+# target to generate assembly for a file
+Examples/Zed/run_zed.cpp.s:
+	$(MAKE) -f CMakeFiles/zed_orb.dir/build.make CMakeFiles/zed_orb.dir/Examples/Zed/run_zed.cpp.s
+.PHONY : Examples/Zed/run_zed.cpp.s
 
 src/Converter.o: src/Converter.cpp.o
 
@@ -884,6 +924,7 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... zed_orb"
 	@echo "... mono_euroc"
 	@echo "... mono_kitti"
 	@echo "... mono_tum"
@@ -909,6 +950,9 @@ help:
 	@echo "... Examples/Stereo/stereo_kitti.o"
 	@echo "... Examples/Stereo/stereo_kitti.i"
 	@echo "... Examples/Stereo/stereo_kitti.s"
+	@echo "... Examples/Zed/run_zed.o"
+	@echo "... Examples/Zed/run_zed.i"
+	@echo "... Examples/Zed/run_zed.s"
 	@echo "... src/Converter.o"
 	@echo "... src/Converter.i"
 	@echo "... src/Converter.s"

@@ -638,7 +638,7 @@ void Tracking::StereoInitialization()
     if(mCurrentFrame.N>500)///特征点数量大于500
     {
         // Set Frame pose to the origin
-        /// 步骤1：设定初始位姿eye(4,4)
+        /// 步骤1：设定初始位姿eye(4,4) 之后的所有位姿都是相对于这个坐标系的
         mCurrentFrame.SetPose(cv::Mat::eye(4,4,CV_32F));
 
         // Create KeyFrame
@@ -1724,6 +1724,7 @@ void Tracking::UpdateLocalKeyFrames()
 
         // 策略2.2:自己的子关键帧
         const set<KeyFrame*> spChilds = pKF->GetChilds();//他们的节点是那个得分最高的关键帧---pKF
+
         for(set<KeyFrame*>::const_iterator sit=spChilds.begin(), send=spChilds.end(); sit!=send; sit++)
         {
             KeyFrame* pChildKF = *sit;
@@ -1750,8 +1751,9 @@ void Tracking::UpdateLocalKeyFrames()
                 pParent->mnTrackReferenceForFrame=mCurrentFrame.mnId;
                 break;
             }
+            mpMap->SetParentKF(ParentKF);
         }
-        mpMap->SetParentKF(ParentKF);
+
         mpMap->SetReferenceLocalKFs(mvpLocalKeyFrames);///新添加,本来只有局部地图点,地图里没有局部关键帧
 
     }

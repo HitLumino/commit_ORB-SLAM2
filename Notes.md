@@ -40,7 +40,7 @@
             - [公有成员变量](#%E5%85%AC%E6%9C%89%E6%88%90%E5%91%98%E5%8F%98%E9%87%8F)
             - [私有函数](#%E7%A7%81%E6%9C%89%E5%87%BD%E6%95%B0)
             - [私有变量](#%E7%A7%81%E6%9C%89%E5%8F%98%E9%87%8F)
-        - [Map源码分析](#map%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90)
+        - [Map源码分析(线程)](#map%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%E7%BA%BF%E7%A8%8B)
             - [Map Tips:](#map-tips)
     - [MapPoint](#mappoint)
         - [MapPoint方法与函数接口](#mappoint%E6%96%B9%E6%B3%95%E4%B8%8E%E5%87%BD%E6%95%B0%E6%8E%A5%E5%8F%A3)
@@ -386,9 +386,9 @@ std::vector<float> Converter::toQuaternion(const cv::Mat &M)
     * 同时对左右目提特征（两个线程）
     * 不需要对特征点进行矫正（双目特有）
     * 计算双目间的匹配, 匹配成功的特征点会计算其深度
-        * 为左图的每一个特征点在右图中找到匹配点 
-        * 根据基线(有冗余范围)上描述子距离找到匹配, 再进行SAD精确定位 
-        * 最后对所有SAD的值进行排序, 剔除SAD值较大的匹配对，然后利用抛物线拟合得到亚像素精度的匹配 
+        * 为左图的每一个特征点在右图中找到匹配点 \n
+        * 根据基线(有冗余范围)上描述子距离找到匹配, 再进行SAD精确定位 \n
+        * 最后对所有SAD的值进行排序, 剔除SAD值较大的匹配对，然后利用抛物线拟合得到亚像素精度的匹配 \n
         * 匹配成功后会更新 mvuRight(ur) 和 mvDepth(Z)
 ```c
 Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
@@ -427,7 +427,6 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     if(mvKeys.empty())
         return;
     // Undistort特征点，这里没有对双目进行校正，因为要求输入的图像已经进行极线校正
-    //https://docs.opencv.org/2.4/modules/imgproc/doc/geometric_transformations.html?highlight=undistortpoints#undistortpoints
     UndistortKeyPoints();
 
     // 计算双目间的匹配, 匹配成功的特征点会计算其深度
@@ -1153,7 +1152,7 @@ void Map::AddKeyFrame(KeyFrame *pKF)
 * long unsigned int mnMaxKFid;
 * **std::mutex mMutexMap**;
 
-### Map源码分析
+### Map源码分析(线程)
 
 #### Map Tips:
 
@@ -1162,12 +1161,12 @@ void Map::AddKeyFrame(KeyFrame *pKF)
 
 **std::unique_lock构造函数**
 
-default(1)  | unique_lock() noexcept;                                 |
-------------|---------------------------------------------------------|
-locking(2)  | explicit unique_lock(mutex_type& m);                    |
-try-locking | unique_lock(mutex_type& m, try_to_lock_t tag);          |
-deferred (4)| unique_lock(mutex_type& m, defer_lock_t tag) noexcept;  |
-adopting (5)|unique_lock(mutex_type& m, adopt_lock_t tag);            |
+default(1)  | unique_lock() noexcept;                                 
+------------|---------------------------------------------------------
+locking(2)  | explicit unique_lock(mutex_type& m);                    
+try-locking | unique_lock(mutex_type& m, try_to_lock_t tag);          
+deferred (4)| unique_lock(mutex_type& m, defer_lock_t tag) noexcept;  
+adopting (5)|unique_lock(mutex_type& m, adopt_lock_t tag);            
 
     1. 新创建的 unique_lock 对象不管理任何 Mutex 对象。
     2. 新创建的 unique_lock 对象管理 Mutex 对象 m，并尝试调用 m.lock() 对 Mutex 对象进行上锁，如果此时另外某个 unique_lock 对象已经管理了该 Mutex 对象 m，则当前线程将会被阻塞。

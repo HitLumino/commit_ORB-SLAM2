@@ -1,5 +1,6 @@
 /home/lumino/hitlumino/commit_ORB-SLAM2/build/CMakeFiles/edit_cache.dir
 /home/lumino/hitlumino/commit_ORB-SLAM2/build/CMakeFiles/rebuild_cache.dir
+/home/lumino/hitlumino/commit_ORB-SLAM2/build/CMakeFiles/zed_orb.dir
 /home/lumino/hitlumino/commit_ORB-SLAM2/build/CMakeFiles/mono_euroc.dir
 /home/lumino/hitlumino/commit_ORB-SLAM2/build/CMakeFiles/mono_kitti.dir
 /home/lumino/hitlumino/commit_ORB-SLAM2/build/CMakeFiles/mono_tum.dir

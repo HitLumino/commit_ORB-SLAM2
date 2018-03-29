@@ -60,6 +60,43 @@ CMAKE_SOURCE_DIR = /home/lumino/hitlumino/commit_ORB-SLAM2
 CMAKE_BINARY_DIR = /home/lumino/hitlumino/commit_ORB-SLAM2/build
 
 #=============================================================================
+# Target rules for target CMakeFiles/zed_orb.dir
+
+# All Build rule for target.
+CMakeFiles/zed_orb.dir/all: CMakeFiles/ORB_SLAM2.dir/all
+	$(MAKE) -f CMakeFiles/zed_orb.dir/build.make CMakeFiles/zed_orb.dir/depend
+	$(MAKE) -f CMakeFiles/zed_orb.dir/build.make CMakeFiles/zed_orb.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/lumino/hitlumino/commit_ORB-SLAM2/build/CMakeFiles --progress-num=33,34 "Built target zed_orb"
+.PHONY : CMakeFiles/zed_orb.dir/all
+
+# Include target in all.
+all: CMakeFiles/zed_orb.dir/all
+
+.PHONY : all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/zed_orb.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/lumino/hitlumino/commit_ORB-SLAM2/build/CMakeFiles 22
+	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/zed_orb.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/lumino/hitlumino/commit_ORB-SLAM2/build/CMakeFiles 0
+.PHONY : CMakeFiles/zed_orb.dir/rule
+
+# Convenience name for target.
+zed_orb: CMakeFiles/zed_orb.dir/rule
+
+.PHONY : zed_orb
+
+# clean rule for target.
+CMakeFiles/zed_orb.dir/clean:
+	$(MAKE) -f CMakeFiles/zed_orb.dir/build.make CMakeFiles/zed_orb.dir/clean
+.PHONY : CMakeFiles/zed_orb.dir/clean
+
+# clean rule for target.
+clean: CMakeFiles/zed_orb.dir/clean
+
+.PHONY : clean
+
+#=============================================================================
 # Target rules for target CMakeFiles/mono_euroc.dir
 
 # All Build rule for target.

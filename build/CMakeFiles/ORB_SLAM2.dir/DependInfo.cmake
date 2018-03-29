@@ -33,10 +33,13 @@ set(CMAKE_TARGET_DEFINITIONS_CXX
 
 # The include file search paths:
 set(CMAKE_CXX_TARGET_INCLUDE_PATH
-  "../"
+  "/usr/local/cuda-8.0/include"
+  "/usr/local/zed/include"
   "../include"
-  "/usr/include/eigen3"
+  "../"
+  "/usr/local/include/eigen3"
   "/usr/local/lib/cmake/Pangolin/../../../include"
+  "/usr/include/eigen3"
   "/opt/ros/kinetic/include/opencv-3.2.0-dev"
   "/opt/ros/kinetic/include/opencv-3.2.0-dev/opencv"
   )

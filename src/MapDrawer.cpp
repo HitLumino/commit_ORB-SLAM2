@@ -138,7 +138,7 @@ void MapDrawer::DrawLocalKeyframes()
     for(size_t i=0;i<vpLocalKFs.size(); i++)
     {
         KeyFrame* pKF = vpLocalKFs[i];
-       //KeyFrame* pParent = pKF->GetParent();///局部关键帧里的父母帧
+        KeyFrame* pParent = pKF->GetParent();///局部关键帧里的父母帧
         cv::Mat Twc = pKF->GetPoseInverse().t();
         glLineWidth(mKeyFrameLineWidth*5);
         glColor4f(0.5f,1.0f,0.0f,0.6);

@@ -65,7 +65,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
     ///Load ORB Vocabulary
     cout << endl << "Loading ORB Vocabulary. This could take a while..." << endl;
-    
+
     mpVocabulary = new ORBVocabulary();
     bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);//词典名字
     if(!bVocLoad)
@@ -75,6 +75,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         exit(-1);
     }
     cout << "Vocabulary loaded!" << endl << endl;
+
+///可以加载.txt或者.bin
 /*
     mpVocabulary = new ORBVocabulary();
     bool bVocLoad = false; // chose loading method based on file extension
