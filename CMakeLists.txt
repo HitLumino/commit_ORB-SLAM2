@@ -40,6 +40,31 @@ endif()
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 
+#CUDA
+find_package(CUDA ${VERSION_REQ_CUDA} REQUIRED)
+include_directories(${CUDA_INCLUDE_DIRS})
+
+IF(WIN32) # Windows
+    if (CMAKE_CL_64)
+        SET(ZED_INCLUDE_DIRS $ENV{ZED_INCLUDE_DIRS})
+        SET(ZED_LIBRARIES $ENV{ZED_LIBRARIES_64})
+        SET(ZED_LIBRARY_DIR $ENV{ZED_LIBRARY_DIR})
+    else()
+        message(FATAL_ERROR "You've selected the 32bit version of ${CMAKE_GENERATOR}. \n Please delete the cache (file->Delete Cache) and use the 64bit version. (${CMAKE_GENERATOR} Win64)")
+    endif()
+ELSE() # Linux
+    find_package(ZED 2.1 REQUIRED)
+    SET(SPECIAL_OS_LIBS "pthread" "X11")
+    add_definitions(-std=c++0x -O3 -pthread)
+ENDIF(WIN32)
+
+#ZED
+
+include_directories(${ZED_INCLUDE_DIRS})
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+
 include_directories(
 ${PROJECT_SOURCE_DIR}
 ${PROJECT_SOURCE_DIR}/include
@@ -81,17 +106,17 @@ ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
 
 # Build examples
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
+#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
 
-add_executable(rgbd_tum
-Examples/RGB-D/rgbd_tum.cpp)
-target_link_libraries(rgbd_tum ${PROJECT_NAME})
+#add_executable(rgbd_tum
+#Examples/RGB-D/rgbd_tum.cpp)
+#target_link_libraries(rgbd_tum ${PROJECT_NAME})
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo)
 
-add_executable(stereo_kitti
-Examples/Stereo/stereo_kitti.cpp)
-target_link_libraries(stereo_kitti ${PROJECT_NAME})
+#add_executable(stereo_kitti
+#Examples/Stereo/stereo_kitti.cpp)
+#target_link_libraries(stereo_kitti ${PROJECT_NAME})
 
 add_executable(stereo_euroc
 Examples/Stereo/stereo_euroc.cpp)
@@ -100,15 +125,20 @@ target_link_libraries(stereo_euroc ${PROJECT_NAME})
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular)
 
-add_executable(mono_tum
-Examples/Monocular/mono_tum.cc)
-target_link_libraries(mono_tum ${PROJECT_NAME})
+#add_executable(mono_tum
+#Examples/Monocular/mono_tum.cc)
+#target_link_libraries(mono_tum ${PROJECT_NAME})
 
-add_executable(mono_kitti
-Examples/Monocular/mono_kitti.cc)
-target_link_libraries(mono_kitti ${PROJECT_NAME})
+#add_executable(mono_kitti
+#Examples/Monocular/mono_kitti.cc)
+#target_link_libraries(mono_kitti ${PROJECT_NAME})
 
 add_executable(mono_euroc
 Examples/Monocular/mono_euroc.cc)
 target_link_libraries(mono_euroc ${PROJECT_NAME})
 
+#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Zed)
+
+#add_executable(zed_orb
+#Examples/Zed/run_zed.cpp)
+#target_link_libraries(zed_orb ${PROJECT_NAME})
